@@ -1,0 +1,79 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::               (v2.7.13)
+
+2026-02-28 16:54:17.264  INFO 50312 --- [           main] com.example.video.VideoApplication       : Starting VideoApplication v0.0.1-SNAPSHOT using Java 1.8.0_131 on wangju with PID 50312 (D:\birthday-video-maker\backend\target\video-0.0.1-SNAPSHOT.jar started by 24245 in D:\birthday-video-maker\backend)
+2026-02-28 16:54:17.265  INFO 50312 --- [           main] com.example.video.VideoApplication       : No active profile set, falling back to 1 default profile: "default"
+2026-02-28 16:54:18.113  INFO 50312 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8080 (http)
+2026-02-28 16:54:18.119  INFO 50312 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-02-28 16:54:18.119  INFO 50312 --- [           main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.76]
+2026-02-28 16:54:18.190  INFO 50312 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-02-28 16:54:18.191  INFO 50312 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 900 ms
+2026-02-28 16:54:18.392  INFO 50312 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8080 (http) with context path ''
+2026-02-28 16:54:18.397  INFO 50312 --- [           main] com.example.video.VideoApplication       : Started VideoApplication in 1.338 seconds (JVM running for 1.558)
+2026-02-28 16:57:16.166  INFO 50312 --- [nio-8080-exec-7] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-02-28 16:57:16.167  INFO 50312 --- [nio-8080-exec-7] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-02-28 16:57:16.167  INFO 50312 --- [nio-8080-exec-7] o.s.web.servlet.DispatcherServlet        : Completed initialization in 0 ms
+Executing FFmpeg command: D:\birthday-video-maker\ffmpeg\bin\ffmpeg.exe -y -loop 1 -t 3 -i C:\Users\24245\AppData\Local\Temp\video_maker\addf6e17-97be-417f-8c9a-9ce01e3bf8c9\cover.jpg -loop 1 -t 3 -i C:\Users\24245\AppData\Local\Temp\video_maker\addf6e17-97be-417f-8c9a-9ce01e3bf8c9\photo_0.jpg -filter_complex "[0:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1,drawtext=fontfile='D\:/fonts/msyh.ttc':text='祝巢六一生日快乐':fontsize=60:fontcolor=white:x=(w-text_w)/2:y=h-100[v0];[1:v]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1[v1];[v0][v1]concat=n=2:v=1:a=0[outv]" -map "[outv]" -c:v libx264 -pix_fmt yuv420p C:\Users\24245\AppData\Local\Temp\video_maker\addf6e17-97be-417f-8c9a-9ce01e3bf8c9\output.mp4
+ffmpeg version 8.0.1-essentials_build-www.gyan.dev Copyright (c) 2000-2025 the FFmpeg developers
+  built with gcc 15.2.0 (Rev8, Built by MSYS2 project)
+  configuration: --enable-gpl --enable-version3 --enable-static --disable-w32threads --disable-autodetect --enable-fontconfig --enable-iconv --enable-gnutls --enable-libxml2 --enable-gmp --enable-bzlib --enable-lzma --enable-zlib --enable-libsrt --enable-libssh --enable-libzmq --enable-avisynth --enable-sdl2 --enable-libwebp --enable-libx264 --enable-libx265 --enable-libxvid --enable-libaom --enable-libopenjpeg --enable-libvpx --enable-mediafoundation --enable-libass --enable-libfreetype --enable-libfribidi --enable-libharfbuzz --enable-libvidstab --enable-libvmaf --enable-libzimg --enable-amf --enable-cuda-llvm --enable-cuvid --enable-dxva2 --enable-d3d11va --enable-d3d12va --enable-ffnvcodec --enable-libvpl --enable-nvdec --enable-nvenc --enable-vaapi --enable-openal --enable-libgme --enable-libopenmpt --enable-libopencore-amrwb --enable-libmp3lame --enable-libtheora --enable-libvo-amrwbenc --enable-libgsm --enable-libopencore-amrnb --enable-libopus --enable-libspeex --enable-libvorbis --enable-librubberband
+  libavutil      60.  8.100 / 60.  8.100
+  libavcodec     62. 11.100 / 62. 11.100
+  libavformat    62.  3.100 / 62.  3.100
+  libavdevice    62.  1.100 / 62.  1.100
+  libavfilter    11.  4.100 / 11.  4.100
+  libswscale      9.  1.100 /  9.  1.100
+  libswresample   6.  1.100 /  6.  1.100
+Input #0, image2, from 'C:\Users\24245\AppData\Local\Temp\video_maker\addf6e17-97be-417f-8c9a-9ce01e3bf8c9\cover.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 27894 kb/s
+  Stream #0:0: Video: mjpeg (Baseline), yuvj420p(pc, bt470bg/unknown/unknown), 1279x1706 [SAR 1:1 DAR 1279:1706], 25 fps, 25 tbr, 25 tbn
+Input #1, image2, from 'C:\Users\24245\AppData\Local\Temp\video_maker\addf6e17-97be-417f-8c9a-9ce01e3bf8c9\photo_0.jpg':
+  Duration: 00:00:00.04, start: 0.000000, bitrate: 212545 kb/s
+  Stream #1:0: Video: mjpeg (Baseline), yuvj420p(pc, bt470bg/unknown/unknown), 1919x1080 [SAR 1:1 DAR 1919:1080], 25 fps, 25 tbr, 25 tbn
+Stream mapping:
+  Stream #0:0 (mjpeg) -> scale:default
+  Stream #1:0 (mjpeg) -> scale:default
+  concat:out:v0 -> Stream #0:0 (libx264)
+Press [q] to stop, [?] for help
+[swscaler @ 000001b1dc259e40] deprecated pixel format used, make sure you did set range correctly
+[swscaler @ 000001b1dc301b40] deprecated pixel format used, make sure you did set range correctly
+[libx264 @ 000001b1dc27c9c0] using SAR=1/1
+[libx264 @ 000001b1dc27c9c0] using cpu capabilities: MMX2 SSE2Fast SSSE3 SSE4.2 AVX FMA3 BMI2 AVX2
+[libx264 @ 000001b1dc27c9c0] profile High, level 3.1, 4:2:0, 8-bit
+[libx264 @ 000001b1dc27c9c0] 264 - core 165 r3223 0480cb0 - H.264/MPEG-4 AVC codec - Copyleft 2003-2025 - http://www.videolan.org/x264.html - options: cabac=1 ref=3 deblock=1:0:0 analyse=0x3:0x113 me=hex subme=7 psy=1 psy_rd=1.00:0.00 mixed_ref=1 me_range=16 chroma_me=1 trellis=1 8x8dct=1 cqm=0 deadzone=21,11 fast_pskip=1 chroma_qp_offset=-2 threads=22 lookahead_threads=3 sliced_threads=0 nr=0 decimate=1 interlaced=0 bluray_compat=0 constrained_intra=0 bframes=3 b_pyramid=2 b_adapt=1 b_bias=0 direct=1 weightb=1 open_gop=0 weightp=2 keyint=250 keyint_min=25 scenecut=40 intra_refresh=0 rc_lookahead=40 rc=crf mbtree=1 crf=23.0 qcomp=0.60 qpmin=0 qpmax=69 qpstep=4 ip_ratio=1.40 aq=1:1.00
+Output #0, mp4, to 'C:\Users\24245\AppData\Local\Temp\video_maker\addf6e17-97be-417f-8c9a-9ce01e3bf8c9\output.mp4':
+  Metadata:
+    encoder         : Lavf62.3.100
+  Stream #0:0: Video: h264 (avc1 / 0x31637661), yuv420p(pc, bt470bg/unknown/unknown, progressive), 1280x720 [SAR 1:1 DAR 16:9], q=2-31, 25 fps, 12800 tbn
+    Metadata:
+      encoder         : Lavc62.11.100 libx264
+    Side data:
+      ICC Profile
+      cpb: bitrate max/min/avg: 0/0/0 buffer size: 0 vbv_delay: N/A
+frame=   44 fps=0.0 q=28.0 size=       0KiB time=00:00:01.68 bitrate=   0.2kbits/s speed=3.34x elapsed=0:00:00.50    [out#0/mp4 @ 000001b1dc1c50c0] video:271KiB audio:0KiB subtitle:0KiB other streams:0KiB global headers:0KiB muxing overhead: 1.168659%
+frame=  150 fps=0.0 q=-1.0 Lsize=     274KiB time=00:00:05.92 bitrate= 379.3kbits/s speed=6.08x elapsed=0:00:00.97    
+[libx264 @ 000001b1dc27c9c0] frame I:2     Avg QP:15.54  size:134748
+[libx264 @ 000001b1dc27c9c0] frame P:38    Avg QP:15.78  size:    80
+[libx264 @ 000001b1dc27c9c0] frame B:110   Avg QP:18.51  size:    38
+[libx264 @ 000001b1dc27c9c0] consecutive B-frames:  1.3%  2.7%  0.0% 96.0%
+[libx264 @ 000001b1dc27c9c0] mb I  I16..4: 21.4% 52.0% 26.5%
+[libx264 @ 000001b1dc27c9c0] mb P  I16..4:  0.0%  0.0%  0.0%  P16..4:  0.3%  0.0%  0.0%  0.0%  0.0%    skip:99.7%
+[libx264 @ 000001b1dc27c9c0] mb B  I16..4:  0.0%  0.0%  0.0%  B16..8:  0.1%  0.0%  0.0%  direct: 0.0%  skip:99.9%  L0:17.9% L1:82.1% BI: 0.0%
+[libx264 @ 000001b1dc27c9c0] 8x8 transform intra:52.1% inter:71.4%
+[libx264 @ 000001b1dc27c9c0] coded y,uvDC,uvAC intra: 68.2% 58.4% 50.7% inter: 0.0% 0.1% 0.0%
+[libx264 @ 000001b1dc27c9c0] i16 v,h,dc,p: 95%  0%  3%  1%
+[libx264 @ 000001b1dc27c9c0] i8 v,h,dc,ddl,ddr,vr,hd,vl,hu: 26% 17% 16%  4%  6%  5%  9%  8% 10%
+[libx264 @ 000001b1dc27c9c0] i4 v,h,dc,ddl,ddr,vr,hd,vl,hu: 28% 15%  7%  6%  8%  7% 10% 10%  9%
+[libx264 @ 000001b1dc27c9c0] i8c dc,h,v,p: 58% 15% 19%  7%
+[libx264 @ 000001b1dc27c9c0] Weighted P-Frames: Y:0.0% UV:0.0%
+[libx264 @ 000001b1dc27c9c0] ref P L0: 97.5%  0.3%  2.3%
+[libx264 @ 000001b1dc27c9c0] ref B L0: 51.3% 48.7%
+[libx264 @ 000001b1dc27c9c0] ref B L1: 97.8%  2.2%
+[libx264 @ 000001b1dc27c9c0] kb/s:368.96
+FFmpeg exit code: 0
