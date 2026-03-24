@@ -84,10 +84,13 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderView updateOrderStatus(Long orderId, String status, BigDecimal amount) {
+    public OrderView updateOrderStatus(Long orderId, String status, BigDecimal amount, Integer maxGenerateCount) {
         OrderRecord record = findEntityById(orderId);
         if (amount != null) {
             record.setAmount(amount);
+        }
+        if (maxGenerateCount != null) {
+            record.setMaxGenerateCount(maxGenerateCount);
         }
         if (!StringUtils.hasText(status)) {
             throw new IllegalArgumentException("status cannot be empty");
@@ -117,6 +120,19 @@ public class OrderService {
     public void updateOrderTask(Long orderId, String taskId) {
         OrderRecord record = findEntityById(orderId);
         record.setTaskId(taskId);
+        orderRepository.save(record);
+    }
+    
+    @Transactional
+    public OrderRecord getOrderForTask(Long orderId) {
+        return findEntityById(orderId);
+    }
+    
+    @Transactional
+    public void incrementOrderTaskCount(Long orderId) {
+        OrderRecord record = findEntityById(orderId);
+        int current = record.getUsedGenerateCount() == null ? 0 : record.getUsedGenerateCount();
+        record.setUsedGenerateCount(current + 1);
         orderRepository.save(record);
     }
 
@@ -160,6 +176,8 @@ public class OrderService {
         view.setRemark(record.getRemark());
         view.setPaidAt(formatTime(record.getPaidAt()));
         view.setTaskId(record.getTaskId());
+        view.setMaxGenerateCount(record.getMaxGenerateCount());
+        view.setUsedGenerateCount(record.getUsedGenerateCount());
         view.setTemplate(templateService.toView(record.getTemplate()));
         return view;
     }

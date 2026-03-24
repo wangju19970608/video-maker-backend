@@ -22,6 +22,15 @@ public class TemplateView {
     private Long salesCount;
     private Boolean enabled;
     private Integer sortOrder;
+    private String templateType;
+
+    public String getTemplateType() {
+        return templateType;
+    }
+
+    public void setTemplateType(String templateType) {
+        this.templateType = templateType;
+    }
 
     public Long getId() {
         return id;

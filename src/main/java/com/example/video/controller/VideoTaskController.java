@@ -50,6 +50,41 @@ public class VideoTaskController {
         }
     }
 
+    @PostMapping(value = "/multipart", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> createMultipartTask(
+            @RequestParam("templateId") Long templateId,
+            @RequestParam(value = "orderId", required = false) Long orderId,
+            @RequestParam(value = "name", required = false) String name,
+            @RequestParam(value = "age", required = false) String age,
+            @RequestParam(value = "time", required = false) String time,
+            @RequestParam(value = "hotel", required = false) String hotel,
+            @RequestParam(value = "coverImage", required = false) org.springframework.web.multipart.MultipartFile coverImage,
+            @RequestParam(value = "async", defaultValue = "false") boolean async) {
+        
+        VideoTaskRequest request = new VideoTaskRequest();
+        request.setTemplateId(templateId);
+        request.setOrderId(orderId);
+        request.setName(name);
+        request.setAge(age);
+        request.setTime(time);
+        request.setHotel(hotel);
+        
+        try {
+            VideoTaskService.TaskRecord record;
+            if (async) {
+                record = videoTaskService.createAsyncWithFile(request, coverImage);
+            } else {
+                VideoTaskResult result = videoTaskService.generateWithFile(request, coverImage);
+                record = videoTaskService.recordCompleted(result);
+            }
+            return ResponseEntity.ok(buildTaskBody(record));
+        } catch (Exception ex) {
+            Map<String, Object> body = new HashMap<>();
+            body.put("message", ex.getMessage());
+            return ResponseEntity.badRequest().body(body);
+        }
+    }
+
     @GetMapping("/{taskId}")
     public ResponseEntity<Map<String, Object>> getTask(@PathVariable String taskId) {
         VideoTaskService.TaskRecord record = videoTaskService.getTaskStatus(taskId);
@@ -68,15 +103,25 @@ public class VideoTaskController {
     }
 
     @GetMapping("/{taskId}/video")
-    public ResponseEntity<Resource> downloadVideo(@PathVariable String taskId) {
+    public ResponseEntity<Resource> getVideo(@PathVariable String taskId) {
+        return serveFile(taskId, "output.mp4", "video/mp4", false);
+    }
+
+    @GetMapping("/{taskId}/parameters")
+    public ResponseEntity<Resource> getParameters(@PathVariable String taskId) {
+        return serveFile(taskId, "parameters.json", MediaType.APPLICATION_JSON_VALUE, false);
+    }
+
+    private ResponseEntity<Resource> serveFile(String taskId, String filename, String contentType, boolean download) {
         Path filePath = videoTaskService.resolveTaskFile(taskId, "output.mp4");
-        return buildFileResponse(filePath, MediaType.valueOf("video/mp4"), "output.mp4", false);
+        return buildFileResponse(filePath, MediaType.valueOf("video/mp4"), "output.mp4", download);
     }
 
     @GetMapping("/{taskId}/docx")
-    public ResponseEntity<Resource> downloadDocx(@PathVariable String taskId) {
+    public ResponseEntity<Resource> downloadDocx(@PathVariable String taskId,
+                                                 @RequestParam(value = "download", defaultValue = "false") boolean download) {
         Path filePath = videoTaskService.resolveTaskFile(taskId, "output.docx");
-        return buildFileResponse(filePath, MediaType.APPLICATION_OCTET_STREAM, "output.docx", false);
+        return buildFileResponse(filePath, MediaType.APPLICATION_OCTET_STREAM, "output.docx", download);
     }
 
     private Map<String, Object> buildTaskBody(VideoTaskService.TaskRecord record) {

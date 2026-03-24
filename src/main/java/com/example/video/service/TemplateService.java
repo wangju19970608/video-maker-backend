@@ -110,6 +110,7 @@ public class TemplateService {
         view.setSalesCount(template.getSalesCount());
         view.setEnabled(template.getEnabled());
         view.setSortOrder(template.getSortOrder());
+        view.setTemplateType(template.getTemplateType());
         return view;
     }
 

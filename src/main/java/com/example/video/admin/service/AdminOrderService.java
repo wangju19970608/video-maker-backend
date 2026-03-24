@@ -67,8 +67,8 @@ public class AdminOrderService {
         return orderService.getOrder(orderId);
     }
 
-    public OrderView updateOrderStatus(Long orderId, String status, java.math.BigDecimal amount) {
-        return orderService.updateOrderStatus(orderId, status, amount);
+    public OrderView updateOrderStatus(Long orderId, String status, java.math.BigDecimal amount, Integer maxGenerateCount) {
+        return orderService.updateOrderStatus(orderId, status, amount, maxGenerateCount);
     }
 
     public void deleteOrder(Long orderId) {

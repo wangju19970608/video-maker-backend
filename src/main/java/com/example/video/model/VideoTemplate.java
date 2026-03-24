@@ -70,6 +70,9 @@ public class VideoTemplate {
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder = 0;
 
+    @Column(name = "template_type", length = 16)
+    private String templateType = "word";
+
     @Column(nullable = false)
     private Boolean enabled = true;
 
@@ -241,6 +244,14 @@ public class VideoTemplate {
 
     public void setEnabled(Boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public String getTemplateType() {
+        return templateType;
+    }
+
+    public void setTemplateType(String templateType) {
+        this.templateType = templateType;
     }
 
     public LocalDateTime getCreatedAt() {

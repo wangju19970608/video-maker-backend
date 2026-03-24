@@ -6,6 +6,7 @@ public class OrderStatusRequest {
 
     private String status;
     private BigDecimal amount;
+    private Integer maxGenerateCount;
 
     public String getStatus() {
         return status;
@@ -21,5 +22,13 @@ public class OrderStatusRequest {
 
     public void setAmount(BigDecimal amount) {
         this.amount = amount;
+    }
+
+    public Integer getMaxGenerateCount() {
+        return maxGenerateCount;
+    }
+
+    public void setMaxGenerateCount(Integer maxGenerateCount) {
+        this.maxGenerateCount = maxGenerateCount;
     }
 }

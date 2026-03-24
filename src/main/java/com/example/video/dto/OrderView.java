@@ -1,6 +1,7 @@
 package com.example.video.dto;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 public class OrderView {
     private Long id;
@@ -14,7 +15,18 @@ public class OrderView {
     private String remark;
     private String paidAt;
     private String taskId;
+    private Integer maxGenerateCount;
+    private Integer usedGenerateCount;
     private TemplateView template;
+    private List<HistoricalTaskView> historicalTasks;
+
+    public List<HistoricalTaskView> getHistoricalTasks() {
+        return historicalTasks;
+    }
+
+    public void setHistoricalTasks(List<HistoricalTaskView> historicalTasks) {
+        this.historicalTasks = historicalTasks;
+    }
 
     public Long getId() {
         return id;
@@ -102,6 +114,22 @@ public class OrderView {
 
     public void setTaskId(String taskId) {
         this.taskId = taskId;
+    }
+
+    public Integer getMaxGenerateCount() {
+        return maxGenerateCount;
+    }
+
+    public void setMaxGenerateCount(Integer maxGenerateCount) {
+        this.maxGenerateCount = maxGenerateCount;
+    }
+
+    public Integer getUsedGenerateCount() {
+        return usedGenerateCount;
+    }
+
+    public void setUsedGenerateCount(Integer usedGenerateCount) {
+        this.usedGenerateCount = usedGenerateCount;
     }
 
     public TemplateView getTemplate() {

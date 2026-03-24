@@ -43,4 +43,23 @@ public class AssetController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
+    @GetMapping("/templates/{type}/{fileName:.+}")
+    public ResponseEntity<Resource> getTemplateAssetWithType(@PathVariable String type, @PathVariable String fileName) {
+        if (fileName.contains("..") || fileName.contains("/") || fileName.contains("\\") || type.contains(".") || type.contains("/") || type.contains("\\")) {
+            return ResponseEntity.badRequest().build();
+        }
+        Path filePath = templateRoot.resolve(type).resolve(fileName);
+        if (!Files.exists(filePath)) {
+            return ResponseEntity.notFound().build();
+        }
+        try {
+            String contentType = Files.probeContentType(filePath);
+            MediaType mediaType = contentType == null ? MediaType.APPLICATION_OCTET_STREAM : MediaType.parseMediaType(contentType);
+            Resource resource = new FileSystemResource(filePath.toFile());
+            return ResponseEntity.ok().contentType(mediaType).body(resource);
+        } catch (Exception ex) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }

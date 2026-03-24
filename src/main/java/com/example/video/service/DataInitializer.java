@@ -54,7 +54,29 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void initTemplates() {
-        if (templateRepository.count() > 0) {
+        templateRepository.findByTemplateCode("video/1").orElseGet(() -> {
+            VideoTemplate tpl = buildTemplate(
+                "video/1",
+                "奥特曼生日祝福（视频版）",
+                "上传照片自动生成奥特曼视频",
+                "hero",
+                "奥特曼",
+                "blessing",
+                "祝福视频",
+                "新品",
+                "奥特曼生日主题自带动效",
+                new BigDecimal("29.90"),
+                "#3550f3",
+                "#0f1d67",
+                0,
+                true
+            );
+            tpl.setTemplateType("video");
+            tpl.setCoverUrl("/api/assets/templates/video/1.mp4");
+            return templateRepository.save(tpl);
+        });
+
+        if (templateRepository.count() > 1) {
             templateRepository.findByTemplateCode("TPL-9001")
                     .orElseGet(() -> {
                         VideoTemplate screenTemplate = buildTemplate(
@@ -239,6 +261,7 @@ public class DataInitializer implements CommandLineRunner {
         template.setSalesCount(0L);
         template.setSortOrder(sortOrder);
         template.setEnabled(enabled);
+        template.setTemplateType("word");
         return template;
     }
 

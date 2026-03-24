@@ -26,14 +26,18 @@ import java.util.Map;
 public class OrderController {
 
     private final OrderService orderService;
+    private final com.example.video.service.VideoTaskService videoTaskService;
 
-    public OrderController(OrderService orderService) {
+    public OrderController(OrderService orderService, com.example.video.service.VideoTaskService videoTaskService) {
         this.orderService = orderService;
+        this.videoTaskService = videoTaskService;
     }
 
     @GetMapping
     public List<OrderView> listOrders() {
-        return orderService.listOrders();
+        List<OrderView> list = orderService.listOrders();
+        list.forEach(this::attachHistory);
+        return list;
     }
 
     @PostMapping
@@ -43,7 +47,15 @@ public class OrderController {
 
     @GetMapping("/{orderId}")
     public OrderView getOrder(@PathVariable Long orderId) {
-        return orderService.getOrder(orderId);
+        OrderView view = orderService.getOrder(orderId);
+        attachHistory(view);
+        return view;
+    }
+
+    private void attachHistory(OrderView view) {
+        if (view != null && view.getId() != null) {
+            view.setHistoricalTasks(videoTaskService.listHistoricalTasks(view.getId()));
+        }
     }
 
     @PutMapping("/{orderId}/pay")
@@ -53,7 +65,7 @@ public class OrderController {
 
     @PutMapping("/{orderId}/status")
     public OrderView updateStatus(@PathVariable Long orderId, @RequestParam String status) {
-        return orderService.updateOrderStatus(orderId, status, null);
+        return orderService.updateOrderStatus(orderId, status, null, null);
     }
 
     @GetMapping("/{orderId}/jump")

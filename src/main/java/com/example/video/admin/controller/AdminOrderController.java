@@ -19,10 +19,16 @@ import java.util.List;
 @RequestMapping("/api/admin/orders")
 public class AdminOrderController {
 
-    private final AdminOrderService orderService;
+    private final AdminOrderService adminOrderService;
+    private final com.example.video.service.OrderService baseOrderService;
+    private final com.example.video.service.VideoTaskService videoTaskService;
 
-    public AdminOrderController(AdminOrderService orderService) {
-        this.orderService = orderService;
+    public AdminOrderController(AdminOrderService adminOrderService,
+                                com.example.video.service.OrderService baseOrderService,
+                                com.example.video.service.VideoTaskService videoTaskService) {
+        this.adminOrderService = adminOrderService;
+        this.baseOrderService = baseOrderService;
+        this.videoTaskService = videoTaskService;
     }
 
     @GetMapping
@@ -30,23 +36,56 @@ public class AdminOrderController {
                                                    @RequestParam(required = false) String status,
                                                    @RequestParam(required = false) String startDate,
                                                    @RequestParam(required = false) String endDate) {
-        return ApiResponse.success(orderService.listOrders(keyword, status, startDate, endDate));
+        List<OrderView> list = adminOrderService.listOrders(keyword, status, startDate, endDate);
+        list.forEach(this::attachHistory);
+        return ApiResponse.success(list);
     }
 
     @GetMapping("/{orderId}")
     public ApiResponse<OrderView> getOrder(@PathVariable Long orderId) {
-        return ApiResponse.success(orderService.getOrder(orderId));
+        OrderView view = adminOrderService.getOrder(orderId);
+        attachHistory(view);
+        return ApiResponse.success(view);
     }
 
     @PutMapping("/{orderId}")
     public ApiResponse<OrderView> updateOrder(@PathVariable Long orderId,
                                               @RequestBody OrderStatusRequest request) {
-        return ApiResponse.success("updated", orderService.updateOrderStatus(orderId, request.getStatus(), request.getAmount()));
+        OrderView view = adminOrderService.updateOrderStatus(orderId, request.getStatus(), request.getAmount(), request.getMaxGenerateCount());
+        attachHistory(view);
+        return ApiResponse.success("updated", view);
+    }
+
+    private void attachHistory(OrderView view) {
+        if (view != null && view.getId() != null) {
+            view.setHistoricalTasks(videoTaskService.listHistoricalTasks(view.getId()));
+        }
     }
 
     @DeleteMapping("/{orderId}")
     public ApiResponse<Boolean> deleteOrder(@PathVariable Long orderId) {
-        orderService.deleteOrder(orderId);
+        adminOrderService.deleteOrder(orderId);
         return ApiResponse.success(true);
+    }
+    @GetMapping("/{orderId}/template-docx")
+    public org.springframework.http.ResponseEntity<org.springframework.core.io.Resource> downloadTemplateDocx(@PathVariable Long orderId) throws Exception {
+        com.example.video.model.OrderRecord order = baseOrderService.getOrderForTask(orderId);
+        if (order == null || order.getTemplate() == null) {
+            return org.springframework.http.ResponseEntity.notFound().build();
+        }
+        java.nio.file.Path docxPath = videoTaskService.resolveDocxPath(order.getTemplate());
+        org.springframework.core.io.Resource resource = new org.springframework.core.io.UrlResource(docxPath.toUri());
+        
+        return org.springframework.http.ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"template_" + order.getTemplate().getId() + ".docx\"")
+                .body(resource);
+    }
+
+    @org.springframework.web.bind.annotation.PostMapping("/{orderId}/generate-custom")
+    public ApiResponse<Object> generateCustom(@PathVariable Long orderId,
+                                              @RequestParam("file") org.springframework.web.multipart.MultipartFile file) throws Exception {
+        com.example.video.service.VideoTaskService.TaskRecord task = videoTaskService.createFromCustomDocx(orderId, file);
+        return ApiResponse.success(task);
     }
 }

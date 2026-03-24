@@ -49,6 +49,12 @@ public class OrderRecord {
     @Column(name = "task_id", length = 64)
     private String taskId;
 
+    @Column(name = "max_generate_count")
+    private Integer maxGenerateCount = 5;
+
+    @Column(name = "used_generate_count")
+    private Integer usedGenerateCount = 0;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "template_id", nullable = false)
     private VideoTemplate template;
@@ -149,6 +155,22 @@ public class OrderRecord {
 
     public void setTaskId(String taskId) {
         this.taskId = taskId;
+    }
+
+    public Integer getMaxGenerateCount() {
+        return maxGenerateCount;
+    }
+
+    public void setMaxGenerateCount(Integer maxGenerateCount) {
+        this.maxGenerateCount = maxGenerateCount;
+    }
+
+    public Integer getUsedGenerateCount() {
+        return usedGenerateCount;
+    }
+
+    public void setUsedGenerateCount(Integer usedGenerateCount) {
+        this.usedGenerateCount = usedGenerateCount;
     }
 
     public VideoTemplate getTemplate() {

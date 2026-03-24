@@ -86,12 +86,21 @@ public class VideoTaskService {
     public VideoTaskResult generate(VideoTaskRequest request) throws IOException, InterruptedException {
         validateRequest(request);
 
+        if (request.getOrderId() != null) {
+            com.example.video.model.OrderRecord order = orderService.getOrderForTask(request.getOrderId());
+            int used = order.getUsedGenerateCount() == null ? 0 : order.getUsedGenerateCount();
+            int max = order.getMaxGenerateCount() == null ? 5 : order.getMaxGenerateCount();
+            if (used >= max) {
+                throw new RuntimeException("该订单的制作次数已达上限 (" + max + "次)");
+            }
+        }
+
         VideoTemplate template = templateRepository.findById(request.getTemplateId())
                 .orElseThrow(() -> new NotFoundException("Template not found: " + request.getTemplateId()));
 
         Path docxPath = resolveDocxPath(template);
 
-        String taskId = buildTaskId();
+        String taskId = buildTaskId(request.getOrderId());
         Path taskDir = videoRoot.resolve(taskId);
         Files.createDirectories(taskDir);
 
@@ -113,6 +122,7 @@ public class VideoTaskService {
         result.setVideoUrl("/api/video/tasks/" + taskId + "/video");
         recordCompleted(result);
         if (request.getOrderId() != null) {
+            orderService.incrementOrderTaskCount(request.getOrderId());
             orderService.updateOrderTask(request.getOrderId(), taskId);
         }
         return result;
@@ -121,12 +131,21 @@ public class VideoTaskService {
     public TaskRecord createAsync(VideoTaskRequest request) throws IOException {
         validateRequest(request);
 
+        if (request.getOrderId() != null) {
+            com.example.video.model.OrderRecord order = orderService.getOrderForTask(request.getOrderId());
+            int used = order.getUsedGenerateCount() == null ? 0 : order.getUsedGenerateCount();
+            int max = order.getMaxGenerateCount() == null ? 5 : order.getMaxGenerateCount();
+            if (used >= max) {
+                throw new RuntimeException("该订单的制作次数已达上限 (" + max + "次)");
+            }
+        }
+
         VideoTemplate template = templateRepository.findById(request.getTemplateId())
                 .orElseThrow(() -> new NotFoundException("Template not found: " + request.getTemplateId()));
 
         Path docxPath = resolveDocxPath(template);
 
-        String taskId = buildTaskId();
+        String taskId = buildTaskId(request.getOrderId());
         Path taskDir = videoRoot.resolve(taskId);
         Files.createDirectories(taskDir);
 
@@ -146,7 +165,42 @@ public class VideoTaskService {
                 record.setStatus("completed");
                 record.setMessage("????");
                 if (request.getOrderId() != null) {
+                    orderService.incrementOrderTaskCount(request.getOrderId());
                     orderService.updateOrderTask(request.getOrderId(), taskId);
+                }
+            } catch (Exception ex) {
+                record.setStatus("failed");
+                record.setMessage(ex.getMessage() == null ? "????" : ex.getMessage());
+            }
+        });
+
+        return record;
+    }
+
+    public TaskRecord createFromCustomDocx(Long orderId, org.springframework.web.multipart.MultipartFile file) throws IOException {
+        String taskId = buildTaskId(orderId);
+        Path taskDir = videoRoot.resolve(taskId);
+        Files.createDirectories(taskDir);
+
+        TaskRecord record = initTaskRecord(taskId);
+        taskStore.put(taskId, record);
+
+        Path outputDocx = taskDir.resolve("output.docx");
+        file.transferTo(outputDocx.toFile());
+
+        taskExecutor.submit(() -> {
+            try {
+                Path outputImage = taskDir.resolve("output.png");
+                Path outputVideo = taskDir.resolve("output.mp4");
+
+                renderDocxToImage(outputDocx, outputImage);
+                generateVideo(outputImage, outputVideo);
+
+                record.setStatus("completed");
+                record.setMessage("????");
+                if (orderId != null) {
+                    orderService.incrementOrderTaskCount(orderId);
+                    orderService.updateOrderTask(orderId, taskId);
                 }
             } catch (Exception ex) {
                 record.setStatus("failed");
@@ -211,9 +265,8 @@ public class VideoTaskService {
         }
         if (!StringUtils.hasText(request.getName())
                 || !StringUtils.hasText(request.getAge())
-                || !StringUtils.hasText(request.getTime())
-                || !StringUtils.hasText(request.getHotel())) {
-            throw new IllegalArgumentException("name, age, time and hotel are required");
+                || !StringUtils.hasText(request.getTime())) {
+            throw new IllegalArgumentException("name, age and time are required");
         }
     }
 
@@ -223,7 +276,7 @@ public class VideoTaskService {
         return parent == null ? current : parent;
     }
 
-    private Path resolveDocxPath(VideoTemplate template) {
+    public Path resolveDocxPath(VideoTemplate template) {
         String previewUrl = template.getPreviewUrl();
         if (StringUtils.hasText(previewUrl)) {
             Path candidate = Paths.get(previewUrl);
@@ -242,8 +295,33 @@ public class VideoTaskService {
         throw new IllegalArgumentException("Template docx not found");
     }
 
-    private String buildTaskId() {
-        return "task-" + TASK_TIME_FORMAT.format(LocalDateTime.now()) + "-" + UUID.randomUUID().toString().substring(0, 6);
+    private String buildTaskId(Long orderId) {
+        String base = "task-" + TASK_TIME_FORMAT.format(LocalDateTime.now()) + "-" + UUID.randomUUID().toString().substring(0, 6);
+        if (orderId != null) {
+            return "order-" + orderId + "-" + base;
+        }
+        return base;
+    }
+
+    public java.util.List<com.example.video.dto.HistoricalTaskView> listHistoricalTasks(Long orderId) {
+        if (orderId == null) return new java.util.ArrayList<>();
+        try (java.util.stream.Stream<Path> stream = Files.list(videoRoot)) {
+            return stream
+                    .filter(Files::isDirectory)
+                    .map(p -> p.getFileName().toString())
+                    .filter(name -> name.startsWith("order-" + orderId + "-"))
+                    .map(this::getTaskStatus)
+                    .filter(java.util.Objects::nonNull)
+                    .map(r -> new com.example.video.dto.HistoricalTaskView(
+                            r.getTaskId(), r.getStatus(), r.getMessage(),
+                            r.getDocxUrl(), r.getImageUrl(), r.getVideoUrl(),
+                            "/api/video/tasks/" + r.getTaskId() + "/parameters"
+                    ))
+                    .sorted((a, b) -> b.getTaskId().compareTo(a.getTaskId()))
+                    .collect(java.util.stream.Collectors.toList());
+        } catch (IOException e) {
+            return new java.util.ArrayList<>();
+        }
     }
 
     private TaskRecord initTaskRecord(String taskId) {
@@ -253,6 +331,7 @@ public class VideoTaskService {
         record.setDocxUrl("/api/video/tasks/" + taskId + "/docx");
         record.setImageUrl("/api/video/tasks/" + taskId + "/image");
         record.setVideoUrl("/api/video/tasks/" + taskId + "/video");
+        record.setParametersUrl("/api/video/tasks/" + taskId + "/parameters");
         return record;
     }
 
@@ -551,10 +630,14 @@ public class VideoTaskService {
         private String docxUrl;
         private String imageUrl;
         private String videoUrl;
+        private String parametersUrl;
 
         public TaskRecord(String taskId) {
             this.taskId = taskId;
         }
+
+        public String getParametersUrl() { return parametersUrl; }
+        public void setParametersUrl(String parametersUrl) { this.parametersUrl = parametersUrl; }
 
         public String getTaskId() {
             return taskId;
@@ -664,6 +747,192 @@ public class VideoTaskService {
 
         public void setVideoUrl(String videoUrl) {
             this.videoUrl = videoUrl;
+        }
+    }
+
+    private void saveTaskParameters(Path taskDir, VideoTaskRequest request) {
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            mapper.writeValue(taskDir.resolve("parameters.json").toFile(), request);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public VideoTaskResult generateWithFile(VideoTaskRequest request, org.springframework.web.multipart.MultipartFile coverImage) throws IOException, InterruptedException {
+        validateRequest(request);
+
+        if (request.getOrderId() != null) {
+            com.example.video.model.OrderRecord order = orderService.getOrderForTask(request.getOrderId());
+            int used = order.getUsedGenerateCount() == null ? 0 : order.getUsedGenerateCount();
+            int max = order.getMaxGenerateCount() == null ? 5 : order.getMaxGenerateCount();
+            if (used >= max) {
+                throw new RuntimeException("该订单的制作次数已达上限 (" + max + "次)");
+            }
+        }
+
+        VideoTemplate template = templateRepository.findById(request.getTemplateId())
+                .orElseThrow(() -> new NotFoundException("Template not found: " + request.getTemplateId()));
+
+        String taskId = buildTaskId(request.getOrderId());
+        Path taskDir = videoRoot.resolve(taskId);
+        Files.createDirectories(taskDir);
+
+        Path outputImage = taskDir.resolve("output.png");
+        if (coverImage != null && !coverImage.isEmpty()) {
+            coverImage.transferTo(outputImage.toFile());
+        } else {
+            Files.write(outputImage, new byte[0]); 
+        }
+
+        saveTaskParameters(taskDir, request);
+
+        Path outputVideo = taskDir.resolve("output.mp4");
+        Path outputDocx = taskDir.resolve("output.docx");
+
+        if ("video".equals(template.getTemplateType())) {
+            Path baseMp4 = templateRoot.resolve("video").resolve("1.mp4");
+            generateNativeVideo(request, outputImage, baseMp4, outputVideo);
+        } else {
+            Path docxPath = resolveDocxPath(template);
+            replaceDocx(docxPath, outputDocx, request);
+            renderDocxToImage(outputDocx, outputImage);
+            generateVideo(outputImage, outputVideo);
+        }
+
+        VideoTaskResult result = new VideoTaskResult();
+        result.setTaskId(taskId);
+        result.setDocxPath(outputDocx);
+        result.setImagePath(outputImage);
+        result.setVideoPath(outputVideo);
+        result.setDocxUrl("/api/video/tasks/" + taskId + "/docx");
+        result.setImageUrl("/api/video/tasks/" + taskId + "/image");
+        result.setVideoUrl("/api/video/tasks/" + taskId + "/video");
+        
+        if (request.getOrderId() != null) {
+            orderService.incrementOrderTaskCount(request.getOrderId());
+            orderService.updateOrderTask(request.getOrderId(), taskId);
+        }
+        return result;
+    }
+
+    public TaskRecord createAsyncWithFile(VideoTaskRequest request, org.springframework.web.multipart.MultipartFile coverImage) throws IOException {
+        validateRequest(request);
+
+        if (request.getOrderId() != null) {
+            com.example.video.model.OrderRecord order = orderService.getOrderForTask(request.getOrderId());
+            int used = order.getUsedGenerateCount() == null ? 0 : order.getUsedGenerateCount();
+            int max = order.getMaxGenerateCount() == null ? 5 : order.getMaxGenerateCount();
+            if (used >= max) {
+                throw new RuntimeException("该订单的制作次数已达上限 (" + max + "次)");
+            }
+        }
+
+        VideoTemplate template = templateRepository.findById(request.getTemplateId())
+                .orElseThrow(() -> new NotFoundException("Template not found: " + request.getTemplateId()));
+
+        String taskId = buildTaskId(request.getOrderId());
+        Path taskDir = videoRoot.resolve(taskId);
+        Files.createDirectories(taskDir);
+
+        TaskRecord record = initTaskRecord(taskId);
+        taskStore.put(taskId, record);
+
+        Path outputImage = taskDir.resolve("output.png");
+        if (coverImage != null && !coverImage.isEmpty()) {
+            coverImage.transferTo(outputImage.toFile());
+        }
+
+        saveTaskParameters(taskDir, request);
+
+        taskExecutor.submit(() -> {
+            try {
+                Path outputVideo = taskDir.resolve("output.mp4");
+                Path outputDocx = taskDir.resolve("output.docx");
+
+                if ("video".equals(template.getTemplateType())) {
+                    Path baseMp4 = templateRoot.resolve("video").resolve("1.mp4");
+                    generateNativeVideo(request, outputImage, baseMp4, outputVideo);
+                } else {
+                    Path docxPath = resolveDocxPath(template);
+                    replaceDocx(docxPath, outputDocx, request);
+                    renderDocxToImage(outputDocx, outputImage);
+                    generateVideo(outputImage, outputVideo);
+                }
+
+                record.setStatus("completed");
+                record.setMessage("????");
+                if (request.getOrderId() != null) {
+                    orderService.incrementOrderTaskCount(request.getOrderId());
+                    orderService.updateOrderTask(request.getOrderId(), taskId);
+                }
+            } catch (Exception ex) {
+                record.setStatus("failed");
+                record.setMessage(ex.getMessage() == null ? "????" : ex.getMessage());
+            }
+        });
+
+        return record;
+    }
+
+    private void generateNativeVideo(VideoTaskRequest request, Path imagePath, Path baseMp4, Path outputVideo) throws IOException, InterruptedException {
+        List<String> command = new ArrayList<>();
+        command.add(ffmpegPath.toString());
+        command.add("-y");
+        command.add("-i");
+        command.add(baseMp4.toString());
+        
+        boolean hasImage = Files.exists(imagePath) && Files.size(imagePath) > 0;
+        if (hasImage) {
+            command.add("-i");
+            command.add(imagePath.toString());
+        }
+
+        String safeName = request.getName() != null ? request.getName().replace("'", "").replace(":", "").replace(",", "") : "";
+        String safeAge = request.getAge() != null ? request.getAge().replace("'", "").replace(":", "").replace(",", "") : "";
+        String safeTime = request.getTime() != null ? request.getTime().replace("'", "").replace(":", "").replace(",", "") : "";
+        
+        String fontFile = "../base/simhei.ttf";
+
+        String filter = "[0:v]drawtext=text='" + safeName + "':x=1150:y=300:fontsize=80:fontcolor=white:fontfile='" + fontFile + "'[t1];" +
+                        "[t1]drawtext=text='" + safeAge + "':x=1200:y=450:fontsize=160:fontcolor=white:fontfile='" + fontFile + "'[t2];" +
+                        "[t2]drawtext=text='" + safeTime + "':x=1150:y=700:fontsize=40:fontcolor=white:fontfile='" + fontFile + "'[bg];" +
+                        "[1:v]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080[img];" +
+                        "[bg][img]overlay=0:0:enable='between(t,2,5)'";
+
+        if (hasImage) {
+            command.add("-filter_complex");
+            command.add(filter);
+        } else {
+            command.add("-vf");
+            command.add("drawtext=text='" + safeName + "':x=1150:y=300:fontsize=80:fontcolor=white:fontfile='" + fontFile + "'," +
+                        "drawtext=text='" + safeAge + "':x=1200:y=450:fontsize=160:fontcolor=white:fontfile='" + fontFile + "'");
+        }
+
+        command.add("-c:a");
+        command.add("copy");
+        command.add(outputVideo.toString());
+
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.redirectErrorStream(true);
+        Process p = pb.start();
+        
+        StringBuilder outputBuilder = new StringBuilder();
+        try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+                outputBuilder.append(line).append("\n");
+            }
+        }
+        
+        boolean finished = p.waitFor(60, TimeUnit.SECONDS);
+        if (!finished) {
+            p.destroyForcibly();
+            throw new RuntimeException("FFmpeg native generation timeout. Log: " + outputBuilder.toString());
+        }
+        if (p.exitValue() != 0) {
+            throw new RuntimeException("FFmpeg native exited with code: " + p.exitValue() + ". Log: " + outputBuilder.toString());
         }
     }
 }
