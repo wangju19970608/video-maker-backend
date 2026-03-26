@@ -50,6 +50,7 @@ public class AdminAuthController {
         String token = resolveToken(authorization, headerToken);
         authService.logout(token);
         return ApiResponse.success(true);
+
     }
 
     private String resolveToken(String authorization, String headerToken) {
