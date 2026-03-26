@@ -74,6 +74,11 @@ public class AdminUserService {
         user.setPhone(trimToNull(request.getPhone()));
         user.setStatus(request.getStatus() == null ? 1 : request.getStatus());
         user.setRoles(fetchRoles(request.getRoleIds()));
+        
+        user.setWechatQrUrl(trimToNull(request.getWechatQrUrl()));
+        user.setWechatLink(trimToNull(request.getWechatLink()));
+        user.setCustomerServiceActive(request.getCustomerServiceActive() != null ? request.getCustomerServiceActive() : false);
+        user.setCustomerServiceWeight(request.getCustomerServiceWeight() != null ? request.getCustomerServiceWeight() : 1);
 
         return toDto(userRepository.save(user));
     }
@@ -110,6 +115,19 @@ public class AdminUserService {
 
         if (request.getRoleIds() != null) {
             user.setRoles(fetchRoles(request.getRoleIds()));
+        }
+
+        if (request.getWechatQrUrl() != null) {
+             user.setWechatQrUrl(trimToNull(request.getWechatQrUrl()));
+        }
+        if (request.getWechatLink() != null) {
+             user.setWechatLink(trimToNull(request.getWechatLink()));
+        }
+        if (request.getCustomerServiceActive() != null) {
+            user.setCustomerServiceActive(request.getCustomerServiceActive());
+        }
+        if (request.getCustomerServiceWeight() != null) {
+            user.setCustomerServiceWeight(request.getCustomerServiceWeight());
         }
 
         return toDto(userRepository.save(user));
@@ -162,6 +180,11 @@ public class AdminUserService {
         dto.setPhone(user.getPhone());
         dto.setStatus(user.getStatus());
         dto.setCreatedAt(user.getCreatedAt() == null ? "" : DATETIME_FORMATTER.format(user.getCreatedAt()));
+
+        dto.setWechatQrUrl(user.getWechatQrUrl());
+        dto.setWechatLink(user.getWechatLink());
+        dto.setCustomerServiceActive(user.getCustomerServiceActive());
+        dto.setCustomerServiceWeight(user.getCustomerServiceWeight());
 
         dto.setRoleIds(user.getRoles().stream().map(AdminRole::getId).collect(Collectors.toList()));
         dto.setRoleNames(user.getRoles().stream().map(AdminRole::getRoleName).collect(Collectors.toList()));

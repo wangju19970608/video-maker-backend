@@ -15,6 +15,11 @@ public class AdminUserDto {
     private List<Long> roleIds = new ArrayList<>();
     private List<String> roleNames = new ArrayList<>();
 
+    private String wechatQrUrl;
+    private String wechatLink;
+    private Boolean customerServiceActive;
+    private Integer customerServiceWeight;
+
     public Long getId() {
         return id;
     }
@@ -85,5 +90,37 @@ public class AdminUserDto {
 
     public void setRoleNames(List<String> roleNames) {
         this.roleNames = roleNames;
+    }
+
+    public String getWechatQrUrl() {
+        return wechatQrUrl;
+    }
+
+    public void setWechatQrUrl(String wechatQrUrl) {
+        this.wechatQrUrl = wechatQrUrl;
+    }
+
+    public String getWechatLink() {
+        return wechatLink;
+    }
+
+    public void setWechatLink(String wechatLink) {
+        this.wechatLink = wechatLink;
+    }
+
+    public Boolean getCustomerServiceActive() {
+        return customerServiceActive;
+    }
+
+    public void setCustomerServiceActive(Boolean customerServiceActive) {
+        this.customerServiceActive = customerServiceActive;
+    }
+
+    public Integer getCustomerServiceWeight() {
+        return customerServiceWeight;
+    }
+
+    public void setCustomerServiceWeight(Integer customerServiceWeight) {
+        this.customerServiceWeight = customerServiceWeight;
     }
 }

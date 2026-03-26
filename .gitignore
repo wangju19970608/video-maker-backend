@@ -1,21 +1,29 @@
-# --- IntelliJ IDEA 专用 ---
+# Maven and Java specific ignores
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# IDE specific ignores
 .idea/
+*.iws
 *.iml
 *.ipr
-*.iws
-out/
+.vscode/
 
-# --- 编译输出 ---
-target/
-build/
-bin/
-*.class
-*.jar
-*.war
-
-# --- 系统文件 ---
-.DS_Store
+# Build and logs
+logs/
 *.log
-*.log.gz
-*.bak
-*.tmp
+
+# Windows specific
+thumbs.db
+
+# User Uploads
+uploads/
+/uploads

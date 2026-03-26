@@ -54,6 +54,18 @@ public class AdminUser {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "wechat_qr_url", length = 255)
+    private String wechatQrUrl;
+
+    @Column(name = "wechat_link", length = 255)
+    private String wechatLink;
+
+    @Column(name = "customer_service_active")
+    private Boolean customerServiceActive = false;
+
+    @Column(name = "customer_service_weight")
+    private Integer customerServiceWeight = 1;
+
     @PrePersist
     public void prePersist() {
         LocalDateTime now = LocalDateTime.now();
@@ -144,5 +156,37 @@ public class AdminUser {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getWechatQrUrl() {
+        return wechatQrUrl;
+    }
+
+    public void setWechatQrUrl(String wechatQrUrl) {
+        this.wechatQrUrl = wechatQrUrl;
+    }
+
+    public String getWechatLink() {
+        return wechatLink;
+    }
+
+    public void setWechatLink(String wechatLink) {
+        this.wechatLink = wechatLink;
+    }
+
+    public Boolean getCustomerServiceActive() {
+        return customerServiceActive;
+    }
+
+    public void setCustomerServiceActive(Boolean customerServiceActive) {
+        this.customerServiceActive = customerServiceActive;
+    }
+
+    public Integer getCustomerServiceWeight() {
+        return customerServiceWeight;
+    }
+
+    public void setCustomerServiceWeight(Integer customerServiceWeight) {
+        this.customerServiceWeight = customerServiceWeight;
     }
 }
