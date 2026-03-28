@@ -76,7 +76,7 @@ public class PaymentService {
             return generateAlipayQrcode(order, appId, privateKey);
         }
 
-        return generateMockQrcode(order);
+        throw new RuntimeException("支付宝配置缺失，请检查 application.properties 重启服务");
     }
 
     private PaymentQrcodeResponse generateAlipayQrcode(OrderRecord order,
@@ -126,18 +126,12 @@ public class PaymentService {
                         ? String.valueOf(alipayResponse.get("sub_msg"))
                         : "未知错误";
                 System.err.println("支付宝二维码生成失败: " + msg);
-                return generateMockQrcode(order);
+                throw new RuntimeException("支付宝二维码生成失败: " + msg);
             }
         } catch (Exception e) {
             System.err.println("支付宝调用异常: " + e.getMessage());
-            return generateMockQrcode(order);
+            throw new RuntimeException("支付宝调用异常: " + e.getMessage());
         }
-    }
-
-    private PaymentQrcodeResponse generateMockQrcode(OrderRecord order) {
-        // Mock 模式：生成一个固定的二维码内容供测试
-        String qrcodeData = "https://qr.alipay.com/mock_" + order.getOrderNo();
-        return new PaymentQrcodeResponse(qrcodeData, order.getOrderNo(), order.getAmount());
     }
 
     // ─── 签名验证（支付宝回调） ───────────────────────────────────────────────
