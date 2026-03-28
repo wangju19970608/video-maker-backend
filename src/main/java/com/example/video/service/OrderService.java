@@ -84,6 +84,20 @@ public class OrderService {
     }
 
     @Transactional
+    public void payOrderByOrderNo(String orderNo) {
+        orderRepository.findByOrderNo(orderNo).ifPresent(record -> {
+            if (!STATUS_PAID.equalsIgnoreCase(record.getStatus())) {
+                String previousStatus = normalizeStatus(record.getStatus());
+                record.setStatus(STATUS_PAID);
+                record.setPaidAt(LocalDateTime.now());
+                adjustTemplateSales(record.getTemplate(), previousStatus, STATUS_PAID);
+                orderRepository.save(record);
+            }
+        });
+    }
+
+
+    @Transactional
     public OrderView updateOrderStatus(Long orderId, String status, BigDecimal amount, Integer maxGenerateCount) {
         OrderRecord record = findEntityById(orderId);
         if (amount != null) {
