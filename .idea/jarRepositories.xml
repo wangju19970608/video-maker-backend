@@ -7,6 +7,11 @@
       <option name="url" value="https://repo.maven.apache.org/maven2" />
     </remote-repository>
     <remote-repository>
+      <option name="id" value="central" />
+      <option name="name" value="Nexus" />
+      <option name="url" value="http://172.19.19.121:8081/nexus/repository/urbanlifeline-group/" />
+    </remote-repository>
+    <remote-repository>
       <option name="id" value="aliyunmaven" />
       <option name="name" value="aliyunmaven" />
       <option name="url" value="https://maven.aliyun.com/repository/public" />

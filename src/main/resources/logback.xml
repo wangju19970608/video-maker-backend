@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="60 seconds" debug="false">
+    <property name="log.path" value="./logs" />
+    <!-- 日志输出格式 -->
+	<property name="log.pattern" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{20} - [%method,%line] - %msg%n" />
+
+	<!-- 控制台输出 -->
+	<appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <pattern>
+                %d{yyyy-MM-dd HH:mm:ss} [%thread] %magenta(%-5level) %yellow([%-50.50class]) ===> %cyan(%msg) %n
+            </pattern>
+        </layout>
+	</appender>
+
+    <!-- 按照每天生成日志文件 -->
+    <appender name="fileLog"  class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- 指定当前正在写入的日志文件名 -->
+        <file>${log.path}/backend.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!--日志文件输出的文件名-->
+            <FileNamePattern>${log.path}/backend.%d{yyyy-MM-dd_HH}.log.gz</FileNamePattern>
+
+            <!--日志文件最大的大小-->
+            <!--            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">-->
+            <!--                <maxFileSize>100MB</maxFileSize>-->
+            <!--  65*24          </timeBasedFileNamingAndTriggeringPolicy>-->
+            <!--日志文件保留小时-->
+            <maxHistory>720</maxHistory>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>${log.pattern}</pattern>
+        </encoder>
+    </appender>
+
+
+<!--    &lt;!&ndash; 系统日志输出 &ndash;&gt;-->
+<!--	<appender name="file_info" class="ch.qos.logback.core.rolling.RollingFileAppender">-->
+<!--	    <file>${log.path}/info.log</file>-->
+<!--        &lt;!&ndash; 循环政策：基于时间创建日志文件 &ndash;&gt;-->
+<!--		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">-->
+<!--            &lt;!&ndash; 日志文件名格式 &ndash;&gt;-->
+<!--			<fileNamePattern>${log.path}/info.%d{yyyy-MM-dd}.log</fileNamePattern>-->
+<!--			&lt;!&ndash; 日志最大的历史 60天 &ndash;&gt;-->
+<!--			<maxHistory>60</maxHistory>-->
+<!--		</rollingPolicy>-->
+<!--		<encoder>-->
+<!--			<pattern>${log.pattern}</pattern>-->
+<!--		</encoder>-->
+<!--		<filter class="ch.qos.logback.classic.filter.LevelFilter">-->
+<!--            &lt;!&ndash; 过滤的级别 &ndash;&gt;-->
+<!--            <level>INFO</level>-->
+<!--            &lt;!&ndash; 匹配时的操作：接收（记录） &ndash;&gt;-->
+<!--            <onMatch>ACCEPT</onMatch>-->
+<!--            &lt;!&ndash; 不匹配时的操作：拒绝（不记录） &ndash;&gt;-->
+<!--            <onMismatch>DENY</onMismatch>-->
+<!--        </filter>-->
+<!--	</appender>-->
+
+<!--    <appender name="file_error" class="ch.qos.logback.core.rolling.RollingFileAppender">-->
+<!--	    <file>${log.path}/error.log</file>-->
+<!--        &lt;!&ndash; 循环政策：基于时间创建日志文件 &ndash;&gt;-->
+<!--        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">-->
+<!--            &lt;!&ndash; 日志文件名格式 &ndash;&gt;-->
+<!--            <fileNamePattern>${log.path}/error.%d{yyyy-MM-dd}.log</fileNamePattern>-->
+<!--			&lt;!&ndash; 日志最大的历史 60天 &ndash;&gt;-->
+<!--			<maxHistory>60</maxHistory>-->
+<!--        </rollingPolicy>-->
+<!--        <encoder>-->
+<!--            <pattern>${log.pattern}</pattern>-->
+<!--        </encoder>-->
+<!--        <filter class="ch.qos.logback.classic.filter.LevelFilter">-->
+<!--            &lt;!&ndash; 过滤的级别 &ndash;&gt;-->
+<!--            <level>ERROR</level>-->
+<!--			&lt;!&ndash; 匹配时的操作：接收（记录） &ndash;&gt;-->
+<!--            <onMatch>ACCEPT</onMatch>-->
+<!--			&lt;!&ndash; 不匹配时的操作：拒绝（不记录） &ndash;&gt;-->
+<!--            <onMismatch>DENY</onMismatch>-->
+<!--        </filter>-->
+<!--    </appender>-->
+
+    <!-- 系统模块日志级别控制  -->
+	<logger name="com.example" level="info" />
+	<!-- Spring日志级别控制  -->
+	<logger name="org.springframework" level="warn" />
+    <!-- mybatis -->
+    <logger name="org.mybatis" level="debug" />
+    <!-- pagehelper -->
+    <logger name="com.github.pagehelper" level="debug" />
+
+	<!-- 统一合并 Root 节点，避免覆盖和冲突 -->
+	<root level="info">
+		<!-- 控制台输出 -->
+		<appender-ref ref="console" />
+		<!-- 系统操作日志落地文件 -->
+		<appender-ref ref="fileLog" />
+	</root>
+</configuration>
