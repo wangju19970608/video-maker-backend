@@ -27,3 +27,7 @@ thumbs.db
 # User Uploads
 uploads/
 /uploads
+
+# 忽略所有以 .class 结尾的文件
+*.class
+
