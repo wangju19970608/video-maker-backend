@@ -5,6 +5,7 @@ import com.example.video.dto.PaymentQrcodeResponse;
 import com.example.video.model.OrderRecord;
 import com.example.video.repository.OrderRecordRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -20,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.Signature;
 import java.util.*;
 
+@Slf4j
 @Service
 public class PaymentService {
 
@@ -77,6 +79,67 @@ public class PaymentService {
         }
 
         throw new RuntimeException("支付宝配置缺失，请检查 application.properties 重启服务");
+    }
+
+    public String getAlipayWapForm(Long orderId) {
+        OrderRecord order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("未找到订单: " + orderId));
+
+        try {
+            String appId = getAppId();
+            String privateKey = getPrivateKey();
+            String signType = getSignType();
+
+            if (!StringUtils.hasText(appId) || !StringUtils.hasText(privateKey)) {
+                throw new RuntimeException("支付宝配置缺失，请在 application.properties 中完善。");
+            }
+
+            Map<String, String> params = new TreeMap<>();
+            params.put("app_id", appId);
+            params.put("method", "alipay.trade.wap.pay");
+            params.put("format", "JSON");
+            params.put("charset", "UTF-8");
+            params.put("sign_type", signType);
+            params.put("timestamp", java.time.LocalDateTime.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            params.put("version", "1.0");
+            
+            String notifyUrl = getNotifyUrl();
+            if (StringUtils.hasText(notifyUrl)) {
+                params.put("notify_url", notifyUrl);
+            }
+
+            Map<String, Object> bizContent = new HashMap<>();
+            bizContent.put("out_trade_no", order.getOrderNo());
+            bizContent.put("total_amount", order.getAmount().toString());
+            bizContent.put("subject", "视频制作-" + order.getTemplate().getName());
+            bizContent.put("product_code", "QUICK_WAP_WAY"); // 手机网站支付固定值
+
+            params.put("biz_content", objectMapper.writeValueAsString(bizContent));
+
+            // 对除 sign 外的所有请求参数进行签名
+            String sign = sign(params, privateKey, signType);
+            params.put("sign", sign);
+
+            // 构造简单的 HTML 表单
+            StringBuilder form = new StringBuilder();
+            form.append("<html><head><meta charset=\"UTF-8\"></head><body>\n");
+            form.append("<form id=\"alipaySubmit\" name=\"alipaySubmit\" action=\"").append(getGateway()).append("?charset=UTF-8\" method=\"POST\">\n");
+            
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                form.append("<input type=\"hidden\" name=\"").append(entry.getKey()).append("\" value=\"")
+                    .append(entry.getValue().replace("\"", "&quot;")).append("\"/>\n");
+            }
+            
+            form.append("</form>\n");
+            form.append("<script>document.getElementById('alipaySubmit').submit();</script>\n");
+            form.append("</body></html>");
+
+            return form.toString();
+        } catch (Exception e) {
+            log.error("生成支付宝 H5 表单异常: {}", e.getMessage(), e);
+            throw new RuntimeException("生成支付表单失败: " + e.getMessage());
+        }
     }
 
     private PaymentQrcodeResponse generateAlipayQrcode(OrderRecord order,
