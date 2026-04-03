@@ -59,8 +59,9 @@ public class VideoTaskController {
             @RequestParam(value = "time", required = false) String time,
             @RequestParam(value = "hotel", required = false) String hotel,
             @RequestParam(value = "coverImage", required = false) org.springframework.web.multipart.MultipartFile coverImage,
-            @RequestParam(value = "async", defaultValue = "false") boolean async) {
-        
+            @RequestParam(value = "async", defaultValue = "false") boolean async,
+            @RequestParam java.util.Map<String, String> allParams) {
+
         VideoTaskRequest request = new VideoTaskRequest();
         request.setTemplateId(templateId);
         request.setOrderId(orderId);
@@ -68,6 +69,13 @@ public class VideoTaskController {
         request.setAge(age);
         request.setTime(time);
         request.setHotel(hotel);
+
+        // 提取动态字段：排除已知固定字段后，其余都作为 dynamicFields
+        java.util.Set<String> fixedKeys = new java.util.HashSet<>(
+                java.util.Arrays.asList("templateId","orderId","name","age","time","hotel","coverImage","async"));
+        java.util.Map<String, String> dynamicFields = new java.util.HashMap<>();
+        allParams.forEach((k, v) -> { if (!fixedKeys.contains(k)) dynamicFields.put(k, v); });
+        if (!dynamicFields.isEmpty()) request.setDynamicFields(dynamicFields);
         
         try {
             VideoTaskService.TaskRecord record;

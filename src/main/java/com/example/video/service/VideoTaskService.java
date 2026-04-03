@@ -58,6 +58,7 @@ public class VideoTaskService {
     private static final DateTimeFormatter TASK_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     private final VideoTemplateRepository templateRepository;
+    private final com.example.video.repository.TemplateConfigRepository templateConfigRepository;
     private final Path projectRoot;
     private final Path templateRoot;
     private final Path videoRoot;
@@ -66,9 +67,13 @@ public class VideoTaskService {
     private final Map<String, TaskRecord> taskStore = new ConcurrentHashMap<>();
     private final ExecutorService taskExecutor = Executors.newFixedThreadPool(2);
     private final OrderService orderService;
+    private final com.fasterxml.jackson.databind.ObjectMapper jsonMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
-    public VideoTaskService(VideoTemplateRepository templateRepository, OrderService orderService) {
+    public VideoTaskService(VideoTemplateRepository templateRepository,
+                            com.example.video.repository.TemplateConfigRepository templateConfigRepository,
+                            OrderService orderService) {
         this.templateRepository = templateRepository;
+        this.templateConfigRepository = templateConfigRepository;
         this.orderService = orderService;
         this.projectRoot = resolveProjectRoot();
         this.templateRoot = projectRoot.resolve("template");
@@ -263,10 +268,14 @@ public class VideoTaskService {
         if (request == null || request.getTemplateId() == null) {
             throw new IllegalArgumentException("templateId is required");
         }
-        if (!StringUtils.hasText(request.getName())
-                || !StringUtils.hasText(request.getAge())
-                || !StringUtils.hasText(request.getTime())) {
-            throw new IllegalArgumentException("name, age and time are required");
+        // 兼容动态表单：如果有 dynamicFields 则不强制要求 name/age/time
+        boolean hasDynamicFields = request.getDynamicFields() != null && !request.getDynamicFields().isEmpty();
+        if (!hasDynamicFields) {
+            if (!StringUtils.hasText(request.getName())
+                    || !StringUtils.hasText(request.getAge())
+                    || !StringUtils.hasText(request.getTime())) {
+                throw new IllegalArgumentException("name, age and time are required");
+            }
         }
     }
 
@@ -876,22 +885,201 @@ public class VideoTaskService {
     }
 
     private void generateNativeVideo(VideoTaskRequest request, Path imagePath, Path baseMp4, Path outputVideo) throws IOException, InterruptedException {
+        // 优先读取 overlayRules 动态配置
+        String overlayRulesJson = null;
+        if (request.getTemplateId() != null) {
+            overlayRulesJson = templateConfigRepository.findByTemplate_Id(request.getTemplateId())
+                    .map(c -> c.getOverlayRules())
+                    .orElse(null);
+        }
+
+        if (StringUtils.hasText(overlayRulesJson) && !overlayRulesJson.equals("[]")) {
+            generateNativeVideoFromRules(request, imagePath, baseMp4, outputVideo, overlayRulesJson);
+        } else {
+            // 回退到原有硬编码逻辑（兼容老模板）
+            generateNativeVideoLegacy(request, imagePath, baseMp4, outputVideo);
+        }
+    }
+
+    /**
+     * 根据 overlayRules JSON 动态构建 FFmpeg 命令合成视频。
+     *
+     * overlayRules 示例：
+     * [
+     *   {"key":"name","type":"text","startTime":2.0,"endTime":20.0,"x":0.60,"y":0.28,"fontSize":80,"fontColor":"#ffffff"},
+     *   {"key":"photo","type":"image","startTime":5.0,"endTime":15.0,"x":0.0,"y":0.0,"width":1.0,"height":1.0}
+     * ]
+     *
+     * 用户字段值从 request 的 dynamicFields Map 中获取（key 对应 formField.key）。
+     * 兼容老字段：name→name, age→age, time→time, hotel→hotel。
+     */
+    private void generateNativeVideoFromRules(VideoTaskRequest request, Path imagePath,
+                                              Path baseMp4, Path outputVideo,
+                                              String overlayRulesJson) throws IOException, InterruptedException {
+        com.fasterxml.jackson.databind.JsonNode rules = jsonMapper.readTree(overlayRulesJson);
+        if (!rules.isArray() || rules.size() == 0) {
+            generateNativeVideoLegacy(request, imagePath, baseMp4, outputVideo);
+            return;
+        }
+
+        // 获取视频实际分辨率
+        int[] resolution = getVideoResolution(baseMp4);
+        int videoWidth = resolution[0];
+        int videoHeight = resolution[1];
+
+        // 分离 text 规则和 image 规则
+        List<com.fasterxml.jackson.databind.JsonNode> textRules = new ArrayList<>();
+        List<com.fasterxml.jackson.databind.JsonNode> imageRules = new ArrayList<>();
+        for (com.fasterxml.jackson.databind.JsonNode rule : rules) {
+            String type = rule.path("type").asText("text");
+            if ("image".equals(type)) {
+                imageRules.add(rule);
+            } else {
+                textRules.add(rule);
+            }
+        }
+
+        String fontFile = "../base/simhei.ttf";
+
+        // 构建 FFmpeg 命令
+        List<String> command = new ArrayList<>();
+        command.add(ffmpegPath.toString());
+        command.add("-y");
+        // 输入1：基础视频
+        command.add("-i");
+        command.add(baseMp4.toString());
+
+        // 如果有 image 规则且用户上传了照片
+        boolean hasImage = !imageRules.isEmpty() && Files.exists(imagePath) && Files.size(imagePath) > 0;
+        if (hasImage) {
+            command.add("-i");
+            command.add(imagePath.toString());
+        }
+
+        // 构建 filter_complex
+        StringBuilder filter = new StringBuilder();
+
+        // 起点：[0:v]
+        String lastLabel = "[0:v]";
+
+        // 先叠加所有 image
+        int imgInputIdx = 1;
+        for (int i = 0; i < imageRules.size(); i++) {
+            if (!hasImage) break;
+            com.fasterxml.jackson.databind.JsonNode rule = imageRules.get(i);
+            double startTime = rule.path("startTime").asDouble(0);
+            double endTime   = rule.path("endTime").asDouble(999);
+            double rx = rule.path("x").asDouble(0);
+            double ry = rule.path("y").asDouble(0);
+            double rw = rule.path("width").asDouble(1);
+            double rh = rule.path("height").asDouble(1);
+
+            int px = (int)(rx * videoWidth);
+            int py = (int)(ry * videoHeight);
+            int pw = (int)(rw * videoWidth);
+            int ph = (int)(rh * videoHeight);
+            // 保证偶数（libx264 要求）
+            pw = pw % 2 == 0 ? pw : pw - 1;
+            ph = ph % 2 == 0 ? ph : ph - 1;
+
+            String scaledLabel = "[img" + i + "scaled]";
+            String outLabel = "[v_img" + i + "]";
+
+            filter.append("[").append(imgInputIdx).append(":v]")
+                  .append("scale=").append(pw).append(":").append(ph)
+                  .append(":force_original_aspect_ratio=increase,crop=").append(pw).append(":").append(ph)
+                  .append(scaledLabel).append(";");
+
+            filter.append(lastLabel).append(scaledLabel)
+                  .append("overlay=").append(px).append(":").append(py)
+                  .append(":enable='between(t,").append(startTime).append(",").append(endTime).append(")'")
+                  .append(outLabel).append(";");
+
+            lastLabel = outLabel;
+            imgInputIdx++;
+        }
+
+        // 再叠加所有 text
+        for (int i = 0; i < textRules.size(); i++) {
+            com.fasterxml.jackson.databind.JsonNode rule = textRules.get(i);
+            String key = rule.path("key").asText("");
+            double startTime = rule.path("startTime").asDouble(0);
+            double endTime   = rule.path("endTime").asDouble(999);
+            double rx = rule.path("x").asDouble(0.5);
+            double ry = rule.path("y").asDouble(0.5);
+            int fontSize = rule.path("fontSize").asInt(48);
+            String fontColor = rule.path("fontColor").asText("white");
+
+            int px = (int)(rx * videoWidth);
+            int py = (int)(ry * videoHeight);
+
+            String value = getFieldValue(request, key);
+            String safeValue = value.replace("'", "").replace(":", "").replace(",", "").replace("\\", "").replace("=", "");
+
+            String outLabel = i < textRules.size() - 1 ? "[t" + i + "]" : "[vout]";
+
+            filter.append(lastLabel)
+                  .append("drawtext=text='").append(safeValue).append("'")
+                  .append(":x=").append(px)
+                  .append(":y=").append(py)
+                  .append(":fontsize=").append(fontSize)
+                  .append(":fontcolor=").append(fontColor.replace("#", "0x"))
+                  .append(":fontfile='").append(fontFile).append("'")
+                  .append(":enable='between(t,").append(startTime).append(",").append(endTime).append(")'")
+                  .append(outLabel).append(";");
+
+            lastLabel = outLabel;
+        }
+
+        // 删除末尾多余的 ";"
+        String filterStr = filter.toString();
+        if (filterStr.endsWith(";")) {
+            filterStr = filterStr.substring(0, filterStr.length() - 1);
+        }
+
+        // 如果没有 filter 内容（无任何规则），直接 copy
+        if (filterStr.isEmpty() || filterStr.trim().isEmpty()) {
+            command.add("-c");
+            command.add("copy");
+        } else {
+            command.add("-filter_complex");
+            command.add(filterStr);
+            // 如果最后 label 是 [vout] 或 [t...] 则用 map，否则让 ffmpeg 自动选
+            if (lastLabel.equals("[vout]") || lastLabel.startsWith("[t") || lastLabel.startsWith("[v_img")) {
+                command.add("-map");
+                command.add(lastLabel);
+                command.add("-map");
+                command.add("0:a?");
+            }
+            command.add("-c:a");
+            command.add("copy");
+        }
+
+        command.add(outputVideo.toString());
+
+        runFfmpegCommand(command, 120);
+    }
+
+    /**
+     * 原有硬编码逻辑，保留作为兼容回退。
+     */
+    private void generateNativeVideoLegacy(VideoTaskRequest request, Path imagePath,
+                                            Path baseMp4, Path outputVideo) throws IOException, InterruptedException {
         List<String> command = new ArrayList<>();
         command.add(ffmpegPath.toString());
         command.add("-y");
         command.add("-i");
         command.add(baseMp4.toString());
-        
+
         boolean hasImage = Files.exists(imagePath) && Files.size(imagePath) > 0;
         if (hasImage) {
             command.add("-i");
             command.add(imagePath.toString());
         }
 
-        String safeName = request.getName() != null ? request.getName().replace("'", "").replace(":", "").replace(",", "") : "";
-        String safeAge = request.getAge() != null ? request.getAge().replace("'", "").replace(":", "").replace(",", "") : "";
-        String safeTime = request.getTime() != null ? request.getTime().replace("'", "").replace(":", "").replace(",", "") : "";
-        
+        String safeName = sanitize(request.getName());
+        String safeAge  = sanitize(request.getAge());
+        String safeTime = sanitize(request.getTime());
         String fontFile = "../base/simhei.ttf";
 
         String filter = "[0:v]drawtext=text='" + safeName + "':x=1150:y=300:fontsize=80:fontcolor=white:fontfile='" + fontFile + "'[t1];" +
@@ -913,26 +1101,78 @@ public class VideoTaskService {
         command.add("copy");
         command.add(outputVideo.toString());
 
+        runFfmpegCommand(command, 60);
+    }
+
+    private String getFieldValue(VideoTaskRequest request, String key) {
+        // 先从动态字段 Map 取
+        if (request.getDynamicFields() != null) {
+            String val = request.getDynamicFields().get(key);
+            if (val != null) return val;
+        }
+        // 再从老字段兼容
+        switch (key) {
+            case "name": return request.getName() != null ? request.getName() : "";
+            case "age":  return request.getAge()  != null ? request.getAge()  : "";
+            case "time": return request.getTime() != null ? request.getTime() : "";
+            case "hotel":return request.getHotel()!= null ? request.getHotel(): "";
+            default:     return "";
+        }
+    }
+
+    private String sanitize(String s) {
+        if (s == null) return "";
+        return s.replace("'", "").replace(":", "").replace(",", "");
+    }
+
+    private int[] getVideoResolution(Path videoPath) throws IOException, InterruptedException {
+        // 尝试用 ffprobe 获取分辨率，失败时默认 1920x1080
+        String ffprobe = ffmpegPath.toString().replace("ffmpeg.exe", "ffprobe.exe").replace("ffmpeg", "ffprobe");
+        if (!new java.io.File(ffprobe).exists()) {
+            return new int[]{1920, 1080};
+        }
+        List<String> cmd = Arrays.asList(
+                ffprobe, "-v", "error",
+                "-select_streams", "v:0",
+                "-show_entries", "stream=width,height",
+                "-of", "csv=p=0",
+                videoPath.toString()
+        );
+        ProcessBuilder pb = new ProcessBuilder(cmd);
+        pb.redirectErrorStream(false);
+        Process p = pb.start();
+        String out = new String(readAllBytes(p.getInputStream()), StandardCharsets.UTF_8).trim();
+        p.waitFor(10, TimeUnit.SECONDS);
+        String[] parts = out.split(",");
+        if (parts.length >= 2) {
+            try {
+                return new int[]{Integer.parseInt(parts[0].trim()), Integer.parseInt(parts[1].trim())};
+            } catch (NumberFormatException ignored) {}
+        }
+        return new int[]{1920, 1080};
+    }
+
+    private void runFfmpegCommand(List<String> command, int timeoutSeconds) throws IOException, InterruptedException {
+        if (!Files.exists(ffmpegPath)) {
+            throw new IllegalStateException("ffmpeg not found at " + ffmpegPath);
+        }
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.redirectErrorStream(true);
         Process p = pb.start();
-        
-        StringBuilder outputBuilder = new StringBuilder();
+        StringBuilder log = new StringBuilder();
         try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(p.getInputStream()))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                System.out.println(line);
-                outputBuilder.append(line).append("\n");
+                log.append(line).append("\n");
             }
         }
-        
-        boolean finished = p.waitFor(60, TimeUnit.SECONDS);
+        boolean finished = p.waitFor(timeoutSeconds, TimeUnit.SECONDS);
         if (!finished) {
             p.destroyForcibly();
-            throw new RuntimeException("FFmpeg native generation timeout. Log: " + outputBuilder.toString());
+            throw new IllegalStateException("FFmpeg timeout. Log: " + log);
         }
         if (p.exitValue() != 0) {
-            throw new RuntimeException("FFmpeg native exited with code: " + p.exitValue() + ". Log: " + outputBuilder.toString());
+            throw new IllegalStateException("FFmpeg exited with code " + p.exitValue() + ". Log: " + log);
         }
     }
 }

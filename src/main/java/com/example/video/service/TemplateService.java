@@ -37,9 +37,13 @@ public class TemplateService {
     );
 
     private final VideoTemplateRepository templateRepository;
+    private final com.example.video.repository.TemplateConfigRepository templateConfigRepository;
+    private final com.fasterxml.jackson.databind.ObjectMapper jsonMapper = new com.fasterxml.jackson.databind.ObjectMapper();
 
-    public TemplateService(VideoTemplateRepository templateRepository) {
+    public TemplateService(VideoTemplateRepository templateRepository,
+                           com.example.video.repository.TemplateConfigRepository templateConfigRepository) {
         this.templateRepository = templateRepository;
+        this.templateConfigRepository = templateConfigRepository;
     }
 
     public List<OptionView> listThemes() {
@@ -111,6 +115,17 @@ public class TemplateService {
         view.setEnabled(template.getEnabled());
         view.setSortOrder(template.getSortOrder());
         view.setTemplateType(template.getTemplateType());
+
+        // 注入 formFields（用于用户端动态渲染表单）
+        templateConfigRepository.findByTemplate_Id(template.getId()).ifPresent(config -> {
+            String json = config.getFormFields();
+            if (StringUtils.hasText(json) && !"[]".equals(json)) {
+                try {
+                    view.setFormFields(jsonMapper.readValue(json, Object.class));
+                } catch (Exception ignored) {}
+            }
+        });
+
         return view;
     }
 

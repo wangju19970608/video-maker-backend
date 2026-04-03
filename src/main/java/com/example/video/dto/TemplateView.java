@@ -23,6 +23,11 @@ public class TemplateView {
     private Boolean enabled;
     private Integer sortOrder;
     private String templateType;
+    /** 动态表单字段配置（JSON 数组对象），用于前端动态渲染表单 */
+    private Object formFields;
+
+    public Object getFormFields() { return formFields; }
+    public void setFormFields(Object formFields) { this.formFields = formFields; }
 
     public String getTemplateType() {
         return templateType;

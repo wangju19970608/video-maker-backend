@@ -125,6 +125,18 @@ public class AdminTemplateService {
         templateRepository.delete(template);
     }
 
+    @Transactional
+    public TemplateView updatePreviewUrl(Long templateId, String relativePath) {
+        VideoTemplate template = templateRepository.findById(templateId)
+                .orElseThrow(() -> new NotFoundException("Template not found: " + templateId));
+        template.setPreviewUrl(relativePath);
+        // video 类型文件自动设置 templateType
+        if (relativePath != null && relativePath.endsWith(".mp4")) {
+            template.setTemplateType("video");
+        }
+        return templateService.toView(templateRepository.save(template));
+    }
+
     private void fillTemplate(VideoTemplate template, TemplateUpsertRequest request, boolean createMode) {
         if (StringUtils.hasText(request.getTemplateCode())) {
             template.setTemplateCode(request.getTemplateCode().trim());

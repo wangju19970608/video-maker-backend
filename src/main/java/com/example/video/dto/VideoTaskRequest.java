@@ -7,6 +7,14 @@ public class VideoTaskRequest {
     private String time;
     private String hotel;
     private Long orderId;
+    /**
+     * 动态表单字段值，key 对应 TemplateConfig.formFields 中的 field.key。
+     * 用于新版动态模板，老模板依然使用 name/age/time/hotel 兼容字段。
+     */
+    private java.util.Map<String, String> dynamicFields;
+
+    public java.util.Map<String, String> getDynamicFields() { return dynamicFields; }
+    public void setDynamicFields(java.util.Map<String, String> dynamicFields) { this.dynamicFields = dynamicFields; }
 
     public Long getTemplateId() {
         return templateId;
