@@ -42,12 +42,25 @@ public class WechatPayController {
      * 发起微信 JSAPI 支付
      */
     @PostMapping("/pay/{orderId}")
-    public ResponseEntity<Object> createPayment(@PathVariable Long orderId, @RequestParam("openid") String openId) {
+    public ResponseEntity<Object> createPayment(
+            @PathVariable Long orderId, 
+            @RequestParam(value = "openid", required = false) String openIdParam,
+            @RequestBody(required = false) Map<String, Object> body) {
+        
         try {
+            String openId = openIdParam;
+            if (openId == null && body != null && body.containsKey("openid")) {
+                openId = String.valueOf(body.get("openid"));
+            }
+            
+            if (openId == null || openId.isEmpty()) {
+                throw new IllegalArgumentException("Missing required parameter: openid");
+            }
+            
             Object jsapiParams = wechatPaymentService.createJsapiOrder(orderId, openId);
             return ResponseEntity.ok(jsapiParams);
         } catch (Exception e) {
-            log.error("Failed to create wechat order", e);
+            log.error("Failed to create wechat order for {}", orderId, e);
             throw new RuntimeException("Wechat pay failed: " + e.getMessage());
         }
     }

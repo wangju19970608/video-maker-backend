@@ -44,11 +44,15 @@ public class GlobalExceptionHandler {
 
     private ResponseEntity<?> buildResponse(HttpStatus status, String message, HttpServletRequest request) {
         if (request.getRequestURI() != null && request.getRequestURI().startsWith("/api/admin")) {
-            return ResponseEntity.status(status).body(ApiResponse.fail(message));
+            return ResponseEntity.status(status)
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .body(ApiResponse.fail(message));
         }
 
         Map<String, Object> body = new HashMap<>();
         body.put("message", message);
-        return ResponseEntity.status(status).body(body);
+        return ResponseEntity.status(status)
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .body(body);
     }
 }
