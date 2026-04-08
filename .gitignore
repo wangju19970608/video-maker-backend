@@ -15,6 +15,7 @@ buildNumber.properties
 *.iws
 *.iml
 *.ipr
+*.class
 .vscode/
 
 # Build and logs
