@@ -7,6 +7,8 @@ import com.example.video.repository.VideoTemplateRepository;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -30,6 +32,7 @@ import java.util.ArrayList;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -64,6 +67,7 @@ public class VideoTaskService {
     private final Path videoRoot;
     private final Path baseRoot;
     private final Path ffmpegPath;
+    private final String libreofficeConfigPath;
     private final Map<String, TaskRecord> taskStore = new ConcurrentHashMap<>();
     private final ExecutorService taskExecutor = Executors.newFixedThreadPool(2);
     private final OrderService orderService;
@@ -71,7 +75,12 @@ public class VideoTaskService {
 
     public VideoTaskService(VideoTemplateRepository templateRepository,
                             com.example.video.repository.TemplateConfigRepository templateConfigRepository,
-                            OrderService orderService) {
+                            OrderService orderService,
+                            @Value("${video.isOnline}") boolean isOnline,
+                            @Value("${video.ffmpeg.path.dev}") String ffmpegPathDev,
+                            @Value("${video.ffmpeg.path.prod}") String ffmpegPathProd,
+                            @Value("${video.libreoffice.path.dev}") String libreofficePathDev,
+                            @Value("${video.libreoffice.path.prod}") String libreofficePathProd) {
         this.templateRepository = templateRepository;
         this.templateConfigRepository = templateConfigRepository;
         this.orderService = orderService;
@@ -79,7 +88,17 @@ public class VideoTaskService {
         this.templateRoot = projectRoot.resolve("template");
         this.videoRoot = projectRoot.resolve("video");
         this.baseRoot = projectRoot.resolve("base");
-        this.ffmpegPath = projectRoot.resolve("ffmpeg").resolve("bin").resolve("ffmpeg.exe");
+
+        // 根据 isOnline 选择对应环境的路径
+        String ffmpegPathConfig = isOnline ? ffmpegPathProd : ffmpegPathDev;
+        this.libreofficeConfigPath = isOnline ? libreofficePathProd : libreofficePathDev;
+
+        // 解析 ffmpeg 路径：支持绝对路径和相对路径
+        if (new File(ffmpegPathConfig).isAbsolute()) {
+            this.ffmpegPath = Paths.get(ffmpegPathConfig);
+        } else {
+            this.ffmpegPath = projectRoot.resolve(ffmpegPathConfig);
+        }
 
         try {
             Files.createDirectories(videoRoot);
@@ -569,6 +588,20 @@ public class VideoTaskService {
     }
 
     private Path findOfficeConverter() {
+        // 1. 先检查配置文件中的路径
+        if (StringUtils.hasText(libreofficeConfigPath)) {
+            Path configPath;
+            if (new File(libreofficeConfigPath).isAbsolute()) {
+                configPath = Paths.get(libreofficeConfigPath);
+            } else {
+                configPath = projectRoot.resolve(libreofficeConfigPath);
+            }
+            if (Files.exists(configPath)) {
+                return configPath;
+            }
+        }
+
+        // 2. 再检查环境变量
         String customPath = System.getenv("LIBREOFFICE_PATH");
         if (StringUtils.hasText(customPath)) {
             Path path = Paths.get(customPath);
@@ -577,11 +610,17 @@ public class VideoTaskService {
             }
         }
 
+        // 3. 最后检查常见路径候选
         List<Path> candidates = Arrays.asList(
                 baseRoot.resolve("libreoffice").resolve("program").resolve("soffice.exe"),
                 baseRoot.resolve("LibreOffice").resolve("program").resolve("soffice.exe"),
                 baseRoot.resolve("LibreOfficePortable").resolve("App").resolve("libreoffice").resolve("program").resolve("soffice.exe"),
                 baseRoot.resolve("LibreOfficePortablePrevious").resolve("App").resolve("libreoffice").resolve("program").resolve("soffice.exe"),
+                // Linux 常见路径
+                Paths.get("/usr/bin/soffice"),
+                Paths.get("/usr/lib/libreoffice/program/soffice"),
+                Paths.get("/opt/libreoffice/program/soffice"),
+                // Windows 默认安装路径
                 Paths.get("C:\\Program Files\\LibreOffice\\program\\soffice.exe"),
                 Paths.get("C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe")
         );
