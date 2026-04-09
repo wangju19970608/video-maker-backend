@@ -1,2 +1,2 @@
-appId: wx3c93b453e2becd26
-appSecret: f4e00036adac548546cee415663ea99a
+appId: wx2ca03e3c69c5851f
+appSecret: ed3f9980e4d30b11969e8e069c181fe9
