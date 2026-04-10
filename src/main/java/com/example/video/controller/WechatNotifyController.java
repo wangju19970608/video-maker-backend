@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import sun.rmi.runtime.Log;
 
 @Slf4j
 @RestController
@@ -31,6 +32,7 @@ public class WechatNotifyController {
      */
     @PostMapping("/notify")
     public String parseOrderNotifyResult(@RequestBody String xmlData) {
+        log.info("-------------------已进入支付回调-----------------------");
         try {
             WxPayOrderNotifyResult result = wxPayService.parseOrderNotifyResult(xmlData);
             log.info("Receive Wechat Pay notification: tradeNo={}, result={}", result.getOutTradeNo(), result.getResultCode());
