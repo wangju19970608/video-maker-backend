@@ -115,3 +115,20 @@ CREATE TABLE IF NOT EXISTS template_config (
                                                UNIQUE KEY uk_template_id (template_id),
     FOREIGN KEY (template_id) REFERENCES video_template(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板配置表（叠加规则+表单字段）';
+
+CREATE TABLE IF NOT EXISTS sys_user (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    openid VARCHAR(64) NOT NULL UNIQUE COMMENT '微信openid',
+    unionid VARCHAR(64) NULL COMMENT '微信unionid',
+    nickname VARCHAR(64) NULL COMMENT '用户昵称',
+    avatar_url VARCHAR(512) NULL COMMENT '头像URL',
+    phone VARCHAR(32) NULL COMMENT '手机号',
+    session_key VARCHAR(128) NULL COMMENT '微信session_key',
+    status INT NOT NULL DEFAULT 1 COMMENT '状态：1正常 0禁用',
+    last_login_at DATETIME NULL COMMENT '最后登录时间',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    KEY idx_sys_user_openid (openid),
+    KEY idx_sys_user_unionid (unionid),
+    KEY idx_sys_user_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='小程序用户表';
