@@ -59,6 +59,9 @@ public class OrderRecord {
     @JoinColumn(name = "template_id", nullable = false)
     private VideoTemplate template;
 
+    @Column(name = "user_id")
+    private Long userId;
+
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
@@ -179,6 +182,14 @@ public class OrderRecord {
 
     public void setTemplate(VideoTemplate template) {
         this.template = template;
+    }
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public LocalDateTime getCreatedAt() {

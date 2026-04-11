@@ -4,6 +4,8 @@ import com.example.video.dto.CreateOrderRequest;
 import com.example.video.dto.OrderView;
 import com.example.video.dto.PaymentQrcodeResponse;
 import com.example.video.dto.TemplateView;
+import com.example.video.model.SysUser;
+import com.example.video.security.UserAuthInterceptor;
 import com.example.video.service.OrderService;
 import com.example.video.service.PaymentService;
 import org.springframework.http.HttpStatus;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -40,19 +43,21 @@ public class OrderController {
     }
 
     @GetMapping
-    public List<OrderView> listOrders() {
-        List<OrderView> list = orderService.listOrders();
+    public List<OrderView> listOrders(HttpServletRequest request) {
+        SysUser user = (SysUser) request.getAttribute(UserAuthInterceptor.USER_ATTR);
+        List<OrderView> list = orderService.listOrders(user.getId());
         list.forEach(this::attachHistory);
         return list;
     }
 
     @PostMapping
-    public ResponseEntity<OrderView> createOrder(@Validated @RequestBody CreateOrderRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(orderService.createOrder(request));
+    public ResponseEntity<OrderView> createOrder(@Validated @RequestBody CreateOrderRequest request, HttpServletRequest httpRequest) {
+        SysUser user = (SysUser) httpRequest.getAttribute(UserAuthInterceptor.USER_ATTR);
+        return ResponseEntity.status(HttpStatus.CREATED).body(orderService.createOrder(request, user.getId()));
     }
 
     @GetMapping("/{orderId}")
-    public OrderView getOrder(@PathVariable Long orderId) {
+    public OrderView getOrder(@PathVariable Long orderId, HttpServletRequest request) {
         OrderView view = orderService.getOrder(orderId);
         attachHistory(view);
         return view;

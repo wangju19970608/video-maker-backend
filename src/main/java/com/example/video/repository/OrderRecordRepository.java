@@ -34,4 +34,6 @@ public interface OrderRecordRepository extends JpaRepository<OrderRecord, Long>,
                                                     @Param("end") LocalDateTime end);
 
     List<OrderRecord> findAllByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    List<OrderRecord> findAllByUserIdOrderByCreatedAtDesc(Long userId);
 }

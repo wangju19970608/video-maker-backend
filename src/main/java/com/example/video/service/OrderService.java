@@ -40,8 +40,8 @@ public class OrderService {
         this.templateService = templateService;
     }
 
-    public List<OrderView> listOrders() {
-        return orderRepository.findAllByOrderByCreatedAtDesc()
+    public List<OrderView> listOrders(Long userId) {
+        return orderRepository.findAllByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(this::toView)
                 .collect(Collectors.toList());
@@ -52,7 +52,7 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderView createOrder(CreateOrderRequest request) {
+    public OrderView createOrder(CreateOrderRequest request, Long userId) {
         VideoTemplate template = templateService.findEntityById(request.getTemplateId());
 
         OrderRecord record = new OrderRecord();
@@ -64,6 +64,7 @@ public class OrderService {
         record.setCustomerPhone(request.getCustomerPhone());
         record.setRemark(request.getRemark());
         record.setTemplate(template);
+        record.setUserId(userId);
 
         return toView(orderRepository.save(record));
     }
