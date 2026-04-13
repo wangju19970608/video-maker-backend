@@ -36,7 +36,6 @@ public class WebConfig implements WebMvcConfigurer {
 
         // User auth interceptor (for /api/orders/**)
         registry.addInterceptor(userAuthInterceptor)
-                .addPathPatterns("/api/orders/**")
-                .excludePathPatterns("/api/orders/*/payment-qrcode");
+                .addPathPatterns("/api/orders/**");
     }
 }

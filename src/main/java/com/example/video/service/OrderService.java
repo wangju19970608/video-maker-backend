@@ -51,6 +51,10 @@ public class OrderService {
         return toView(findEntityById(orderId));
     }
 
+    public OrderView getOrder(Long orderId, Long userId) {
+        return toView(findEntityByIdAndCheckOwner(orderId, userId));
+    }
+
     @Transactional
     public OrderView createOrder(CreateOrderRequest request, Long userId) {
         VideoTemplate template = templateService.findEntityById(request.getTemplateId());
@@ -71,7 +75,12 @@ public class OrderService {
 
     @Transactional
     public OrderView payOrder(Long orderId) {
-        OrderRecord record = findEntityById(orderId);
+        return payOrder(orderId, null);
+    }
+
+    @Transactional
+    public OrderView payOrder(Long orderId, Long userId) {
+        OrderRecord record = findEntityByIdAndCheckOwner(orderId, userId);
         if (STATUS_PAID.equalsIgnoreCase(record.getStatus())) {
             return toView(record);
         }
@@ -100,7 +109,12 @@ public class OrderService {
 
     @Transactional
     public OrderView updateOrderStatus(Long orderId, String status, BigDecimal amount, Integer maxGenerateCount) {
-        OrderRecord record = findEntityById(orderId);
+        return updateOrderStatus(orderId, status, amount, maxGenerateCount, null);
+    }
+
+    @Transactional
+    public OrderView updateOrderStatus(Long orderId, String status, BigDecimal amount, Integer maxGenerateCount, Long userId) {
+        OrderRecord record = findEntityByIdAndCheckOwner(orderId, userId);
         if (amount != null) {
             record.setAmount(amount);
         }
@@ -152,7 +166,11 @@ public class OrderService {
     }
 
     public TemplateView jumpTemplate(Long orderId) {
-        OrderRecord record = findEntityById(orderId);
+        return jumpTemplate(orderId, null);
+    }
+
+    public TemplateView jumpTemplate(Long orderId, Long userId) {
+        OrderRecord record = findEntityByIdAndCheckOwner(orderId, userId);
         if (!STATUS_PAID.equalsIgnoreCase(record.getStatus())) {
             throw new IllegalArgumentException("Order is not paid yet");
         }
@@ -161,7 +179,12 @@ public class OrderService {
 
     @Transactional
     public void deleteOrder(Long orderId) {
-        OrderRecord record = findEntityById(orderId);
+        deleteOrder(orderId, null);
+    }
+
+    @Transactional
+    public void deleteOrder(Long orderId, Long userId) {
+        OrderRecord record = findEntityByIdAndCheckOwner(orderId, userId);
         if (STATUS_PAID.equalsIgnoreCase(record.getStatus())) {
             VideoTemplate template = record.getTemplate();
             long current = template.getSalesCount() == null ? 0L : template.getSalesCount();
@@ -176,6 +199,14 @@ public class OrderService {
     public OrderRecord findEntityById(Long orderId) {
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException("Order not found: " + orderId));
+    }
+
+    public OrderRecord findEntityByIdAndCheckOwner(Long orderId, Long userId) {
+        OrderRecord record = findEntityById(orderId);
+        if (userId != null && !userId.equals(record.getUserId())) {
+            throw new RuntimeException("无权操作此订单");
+        }
+        return record;
     }
 
     public OrderView toView(OrderRecord record) {
