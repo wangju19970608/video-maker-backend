@@ -102,8 +102,53 @@ public class VideoTaskService {
 
         try {
             Files.createDirectories(videoRoot);
+            setupFonts(isOnline);
+        } catch (Exception e) {
+            throw new IllegalStateException("Cannot create video output directory or setup fonts", e);
+        }
+    }
+
+    private void setupFonts(boolean isOnline) {
+        if (!isOnline) {
+            return;
+        }
+        try {
+            String userHome = System.getProperty("user.home");
+            if (userHome != null) {
+                Path userFonts = Paths.get(userHome, ".fonts");
+                Files.createDirectories(userFonts);
+                copyFontFiles(baseRoot, userFonts);
+            }
+
+            Path loProfileFonts = baseRoot.resolve(".libreoffice_profile").resolve("user").resolve("fonts");
+            Files.createDirectories(loProfileFonts);
+            copyFontFiles(baseRoot, loProfileFonts);
+        } catch (Exception e) {
+            System.err.println("Font setup error: " + e.getMessage());
+        }
+    }
+
+    private void copyFontFiles(Path sourceDir, Path targetDir) {
+        if (!Files.exists(sourceDir)) {
+            return;
+        }
+        try (java.util.stream.Stream<Path> stream = Files.walk(sourceDir, 3)) {
+            stream.filter(p -> {
+                String name = p.getFileName().toString().toLowerCase();
+                return (name.endsWith(".ttf") || name.endsWith(".otf") || name.endsWith(".ttc")) 
+                       && !p.startsWith(targetDir);
+            }).forEach(p -> {
+                Path target = targetDir.resolve(p.getFileName());
+                if (!Files.exists(target)) {
+                    try {
+                        Files.copy(p, target);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
         } catch (IOException e) {
-            throw new IllegalStateException("Cannot create video output directory", e);
+            e.printStackTrace();
         }
     }
 
@@ -557,8 +602,12 @@ public class VideoTaskService {
 
         Files.deleteIfExists(pdfPath);
 
+        Path profilePath = baseRoot.resolve(".libreoffice_profile");
+        String envUserInstall = "-env:UserInstallation=file://" + profilePath.toAbsolutePath().toString().replace("\\", "/");
+
         List<String> command = Arrays.asList(
                 soffice.toString(),
+                envUserInstall,
                 "--headless",
                 "--nologo",
                 "--nolockcheck",
@@ -570,6 +619,10 @@ public class VideoTaskService {
         );
 
         ProcessBuilder builder = new ProcessBuilder(command);
+        String userHome = System.getProperty("user.home");
+        if (userHome != null) {
+            builder.environment().put("HOME", userHome);
+        }
         builder.redirectErrorStream(true);
         Process process = builder.start();
         drainProcessOutput(process);
