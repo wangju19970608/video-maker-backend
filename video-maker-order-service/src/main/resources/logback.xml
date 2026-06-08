@@ -1,0 +1,98 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="60 seconds" debug="false">
+    <property name="log.path" value="./logs" />
+    <!-- 鏃ュ織杈撳嚭鏍煎紡 -->
+	<property name="log.pattern" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{20} - [%method,%line] - %msg%n" />
+
+	<!-- 鎺у埗鍙拌緭鍑?-->
+	<appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <pattern>
+                %d{yyyy-MM-dd HH:mm:ss} [%thread] %magenta(%-5level) %yellow([%-50.50class]) ===> %cyan(%msg) %n
+            </pattern>
+        </layout>
+	</appender>
+
+    <!-- 鎸夌収姣忓ぉ鐢熸垚鏃ュ織鏂囦欢 -->
+    <appender name="fileLog"  class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- 鎸囧畾褰撳墠姝ｅ湪鍐欏叆鐨勬棩蹇楁枃浠跺悕 -->
+        <file>${log.path}/backend.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!--鏃ュ織鏂囦欢杈撳嚭鐨勬枃浠跺悕-->
+            <FileNamePattern>${log.path}/backend.%d{yyyy-MM-dd_HH}.log.gz</FileNamePattern>
+
+            <!--鏃ュ織鏂囦欢鏈€澶х殑澶у皬-->
+            <!--            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">-->
+            <!--                <maxFileSize>100MB</maxFileSize>-->
+            <!--  65*24          </timeBasedFileNamingAndTriggeringPolicy>-->
+            <!--鏃ュ織鏂囦欢淇濈暀灏忔椂-->
+            <maxHistory>720</maxHistory>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>${log.pattern}</pattern>
+        </encoder>
+    </appender>
+
+
+<!--    &lt;!&ndash; 绯荤粺鏃ュ織杈撳嚭 &ndash;&gt;-->
+<!--	<appender name="file_info" class="ch.qos.logback.core.rolling.RollingFileAppender">-->
+<!--	    <file>${log.path}/info.log</file>-->
+<!--        &lt;!&ndash; 寰幆鏀跨瓥锛氬熀浜庢椂闂村垱寤烘棩蹇楁枃浠?&ndash;&gt;-->
+<!--		<rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">-->
+<!--            &lt;!&ndash; 鏃ュ織鏂囦欢鍚嶆牸寮?&ndash;&gt;-->
+<!--			<fileNamePattern>${log.path}/info.%d{yyyy-MM-dd}.log</fileNamePattern>-->
+<!--			&lt;!&ndash; 鏃ュ織鏈€澶х殑鍘嗗彶 60澶?&ndash;&gt;-->
+<!--			<maxHistory>60</maxHistory>-->
+<!--		</rollingPolicy>-->
+<!--		<encoder>-->
+<!--			<pattern>${log.pattern}</pattern>-->
+<!--		</encoder>-->
+<!--		<filter class="ch.qos.logback.classic.filter.LevelFilter">-->
+<!--            &lt;!&ndash; 杩囨护鐨勭骇鍒?&ndash;&gt;-->
+<!--            <level>INFO</level>-->
+<!--            &lt;!&ndash; 鍖归厤鏃剁殑鎿嶄綔锛氭帴鏀讹紙璁板綍锛?&ndash;&gt;-->
+<!--            <onMatch>ACCEPT</onMatch>-->
+<!--            &lt;!&ndash; 涓嶅尮閰嶆椂鐨勬搷浣滐細鎷掔粷锛堜笉璁板綍锛?&ndash;&gt;-->
+<!--            <onMismatch>DENY</onMismatch>-->
+<!--        </filter>-->
+<!--	</appender>-->
+
+<!--    <appender name="file_error" class="ch.qos.logback.core.rolling.RollingFileAppender">-->
+<!--	    <file>${log.path}/error.log</file>-->
+<!--        &lt;!&ndash; 寰幆鏀跨瓥锛氬熀浜庢椂闂村垱寤烘棩蹇楁枃浠?&ndash;&gt;-->
+<!--        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">-->
+<!--            &lt;!&ndash; 鏃ュ織鏂囦欢鍚嶆牸寮?&ndash;&gt;-->
+<!--            <fileNamePattern>${log.path}/error.%d{yyyy-MM-dd}.log</fileNamePattern>-->
+<!--			&lt;!&ndash; 鏃ュ織鏈€澶х殑鍘嗗彶 60澶?&ndash;&gt;-->
+<!--			<maxHistory>60</maxHistory>-->
+<!--        </rollingPolicy>-->
+<!--        <encoder>-->
+<!--            <pattern>${log.pattern}</pattern>-->
+<!--        </encoder>-->
+<!--        <filter class="ch.qos.logback.classic.filter.LevelFilter">-->
+<!--            &lt;!&ndash; 杩囨护鐨勭骇鍒?&ndash;&gt;-->
+<!--            <level>ERROR</level>-->
+<!--			&lt;!&ndash; 鍖归厤鏃剁殑鎿嶄綔锛氭帴鏀讹紙璁板綍锛?&ndash;&gt;-->
+<!--            <onMatch>ACCEPT</onMatch>-->
+<!--			&lt;!&ndash; 涓嶅尮閰嶆椂鐨勬搷浣滐細鎷掔粷锛堜笉璁板綍锛?&ndash;&gt;-->
+<!--            <onMismatch>DENY</onMismatch>-->
+<!--        </filter>-->
+<!--    </appender>-->
+
+    <!-- 绯荤粺妯″潡鏃ュ織绾у埆鎺у埗  -->
+	<logger name="com.example" level="info" />
+	<!-- Spring鏃ュ織绾у埆鎺у埗  -->
+	<logger name="org.springframework" level="warn" />
+    <!-- mybatis -->
+    <logger name="org.mybatis" level="debug" />
+    <!-- pagehelper -->
+    <logger name="com.github.pagehelper" level="debug" />
+
+	<!-- 缁熶竴鍚堝苟 Root 鑺傜偣锛岄伩鍏嶈鐩栧拰鍐茬獊 -->
+	<root level="info">
+		<!-- 鎺у埗鍙拌緭鍑?-->
+		<appender-ref ref="console" />
+		<!-- 绯荤粺鎿嶄綔鏃ュ織钀藉湴鏂囦欢 -->
+		<appender-ref ref="fileLog" />
+	</root>
+</configuration>

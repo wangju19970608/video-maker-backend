@@ -1,0 +1,38 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: video-maker-gateway
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+    gateway:
+      routes:
+        - id: order-service
+          uri: lb://video-maker-order-service
+          predicates:
+            - Path=/api/orders/**,/api/admin/orders/**
+            
+        - id: pay-service
+          uri: lb://video-maker-pay-service
+          predicates:
+            - Path=/api/wechat/pay/**,/api/pay/alipay/**,/api/wechat/notify,/api/pay/alipay/notify
+            
+        - id: customer-service
+          uri: lb://video-maker-customer-service
+          predicates:
+            - Path=/api/customer-service/**,/api/customer-qrcode/**
+            
+        - id: biz-birthday-service
+          uri: lb://video-maker-biz-birthday
+          predicates:
+            - Path=/api/**
+            
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods: "*"
+            allowedHeaders: "*"
