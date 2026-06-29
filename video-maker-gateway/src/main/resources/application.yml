@@ -25,6 +25,11 @@ spring:
           predicates:
             - Path=/api/customer-service/**,/api/customer-qrcode/**
             
+        - id: extractor-service
+          uri: lb://video-maker-extractor-service
+          predicates:
+            - Path=/api/extractor/**
+
         - id: biz-birthday-service
           uri: lb://video-maker-biz-birthday
           predicates:

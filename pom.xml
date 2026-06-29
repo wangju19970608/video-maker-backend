@@ -23,6 +23,7 @@
         <module>video-maker-pay-service</module>
         <module>video-maker-customer-service</module>
         <module>video-maker-biz-birthday</module>
+        <module>video-maker-extractor-service</module>
     </modules>
 
     <properties>

@@ -6,13 +6,30 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="video" />
+        <module name="video-maker-biz-birthday" />
+        <module name="video-maker-common" />
+        <module name="video-maker-order-service" />
+        <module name="video-maker-customer-service" />
+        <module name="video-maker-pay-service" />
+        <module name="video-maker-extractor-service" />
+        <module name="video-maker-gateway" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="video-maker-douyin-service" target="1.8" />
+    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
-      <module name="video" options="-parameters" />
+      <module name="video" options="" />
+      <module name="video-maker-biz-birthday" options="-parameters" />
+      <module name="video-maker-common" options="-parameters" />
+      <module name="video-maker-customer-service" options="-parameters" />
+      <module name="video-maker-douyin-service" options="-parameters" />
+      <module name="video-maker-extractor-service" options="-parameters" />
+      <module name="video-maker-gateway" options="-parameters" />
+      <module name="video-maker-order-service" options="-parameters" />
+      <module name="video-maker-pay-service" options="-parameters" />
     </option>
   </component>
 </project>
