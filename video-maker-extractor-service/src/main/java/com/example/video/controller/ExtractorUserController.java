@@ -39,21 +39,32 @@ public class ExtractorUserController {
 
     @PostMapping("/login")
     public Result<LoginResponse> login(@RequestBody LoginRequest request) {
+        log.info("=== [Login] 收到登录请求 ===");
         try {
-            if (request == null || request.getCode() == null || request.getCode().trim().isEmpty()) {
+            // ---- 1. 参数校验 ----
+            if (request == null) {
+                log.warn("[Login] 请求体为空");
+                return Result.fail("请求体不能为空");
+            }
+            log.info("[Login] 请求参数: code={}, nickname={}, hasAvatar={}",
+                    request.getCode(),
+                    request.getNickname(),
+                    request.getAvatarUrl() != null && !request.getAvatarUrl().isEmpty());
+
+            if (request.getCode() == null || request.getCode().trim().isEmpty()) {
+                log.warn("[Login] code为空，拒绝登录");
                 return Result.fail("code is required");
             }
 
             String code = request.getCode().trim();
-            log.info("Douyin Mini-Program login request received for extractor, code={}", code);
+            log.info("[Login] appId={}, code(前8位)={}", appId, code.length() >= 8 ? code.substring(0, 8) + "..." : code);
 
+            // ---- 2. 调用抖音 code2Session 接口 ----
             String openid = null;
             String sessionKey = null;
-            String anonymousOpenid = null;
             String unionid = null;
 
             try {
-                // Prepare request body for Douyin code2Session
                 Map<String, String> body = new HashMap<>();
                 body.put("appid", appId);
                 body.put("secret", appSecret);
@@ -63,49 +74,70 @@ public class ExtractorUserController {
                 headers.setContentType(MediaType.APPLICATION_JSON);
                 HttpEntity<Map<String, String>> httpEntity = new HttpEntity<>(body, headers);
 
-                log.info("Requesting Douyin session API for extractor app...");
+                log.info("[Login] 正在调用抖音 jscode2session 接口...");
                 ResponseEntity<String> apiResponse = restTemplate.postForEntity(
                         "https://developer.toutiao.com/api/apps/v2/jscode2session",
                         httpEntity,
                         String.class
                 );
 
-                log.info("Douyin session API response: {}", apiResponse.getBody());
+                log.info("[Login] 抖音接口响应状态码: {}", apiResponse.getStatusCode());
+                log.info("[Login] 抖音接口响应体: {}", apiResponse.getBody());
+
                 JsonNode root = objectMapper.readTree(apiResponse.getBody());
 
-                int errNo = root.path("err_no").asInt(-1);
-                if (errNo == 0) {
-                    JsonNode dataNode = root.path("data");
-                    openid = dataNode.path("openid").asText();
-                    sessionKey = dataNode.path("session_key").asText();
-                    anonymousOpenid = dataNode.path("anonymous_openid").asText();
-                    unionid = dataNode.path("unionid").asText();
-                } else if (root.has("error") && root.path("error").asInt() == 0) {
-                    openid = root.path("openid").asText();
-                    sessionKey = root.path("session_key").asText();
-                    anonymousOpenid = root.path("anonymous_openid").asText();
-                    unionid = root.path("unionid").asText();
-                } else {
-                    log.warn("Douyin login API returned non-zero code, falling back to mock login for testing. err_no={}, err_tips={}",
-                            errNo, root.path("err_tips").asText());
+                // 抖音 v2 接口: err_no=0 表示成功，数据在 data 节点
+                if (root.has("err_no")) {
+                    int errNo = root.path("err_no").asInt(-1);
+                    log.info("[Login] 抖音响应 err_no={}, err_tips={}", errNo, root.path("err_tips").asText(""));
+                    if (errNo == 0) {
+                        JsonNode dataNode = root.path("data");
+                        openid = dataNode.path("openid").asText(null);
+                        sessionKey = dataNode.path("session_key").asText(null);
+                        unionid = dataNode.path("unionid").asText(null);
+                        log.info("[Login] 抖音返回 openid(前8位)={}, 有unionid={}",
+                                openid != null && openid.length() >= 8 ? openid.substring(0, 8) + "..." : openid,
+                                unionid != null && !unionid.isEmpty());
+                    } else {
+                        log.warn("[Login] 抖音接口返回错误: err_no={}, err_tips={}", errNo, root.path("err_tips").asText());
+                    }
                 }
+                // 旧格式兼容: error=0
+                else if (root.has("error") && root.path("error").asInt(-1) == 0) {
+                    openid = root.path("openid").asText(null);
+                    sessionKey = root.path("session_key").asText(null);
+                    unionid = root.path("unionid").asText(null);
+                    log.info("[Login] 抖音返回(旧格式) openid(前8位)={}",
+                            openid != null && openid.length() >= 8 ? openid.substring(0, 8) + "..." : openid);
+                } else {
+                    log.warn("[Login] 抖音接口返回未知格式，完整响应: {}", apiResponse.getBody());
+                }
+
             } catch (Exception e) {
-                log.warn("Douyin API call failed, falling back to mock login for testing: {}", e.getMessage());
+                log.warn("[Login] 调用抖音API失败，将使用 mock 登录（仅用于测试）: {}", e.getMessage());
             }
 
-            // Fallback for local sandbox/testing if API keys are invalid
+            // ---- 3. Mock 回退（openid为空时） ----
             if (openid == null || openid.trim().isEmpty()) {
-                log.info("Using mock login session...");
+                log.info("[Login] openid为空，启用 mock 登录...");
                 openid = "dy_mock_openid_" + code.substring(Math.max(0, code.length() - 8));
                 sessionKey = "mock_session_key";
+                log.info("[Login] mock openid={}", openid);
             }
 
-            // Find or create user. Prefix openid with "dy_" to differentiate from WeChat users
+            // ---- 4. 查找或创建用户 ----
+            // 加 "dy_" 前缀区分微信用户
             String dbOpenid = openid.startsWith("dy_") ? openid : "dy_" + openid;
-            SysUser user = findOrCreateUser(dbOpenid, unionid, request.getNickname(), request.getAvatarUrl(), sessionKey);
+            log.info("[Login] 开始查找/创建用户, dbOpenid={}", dbOpenid);
 
+            SysUser user = findOrCreateUser(dbOpenid, unionid, request.getNickname(), request.getAvatarUrl(), sessionKey);
+            log.info("[Login] 用户操作完成, userId={}, nickname={}", user.getId(), user.getNickname());
+
+            // ---- 5. 生成 Token ----
+            // Token格式: {32位UUID无横线}{userId数字}，确保 UserAuthInterceptor 可以正确解析
             String token = UUID.randomUUID().toString().replace("-", "") + user.getId();
-            log.info("Extractor login success, userId={}, openid={}", user.getId(), dbOpenid);
+            log.info("[Login] 生成token成功, userId={}, tokenLength={}", user.getId(), token.length());
+            log.info("=== [Login] 登录成功 userId={} ===", user.getId());
 
             LoginResponse response = new LoginResponse();
             response.setToken(token);
@@ -117,15 +149,18 @@ public class ExtractorUserController {
             return Result.success(response);
 
         } catch (Exception e) {
-            log.error("Extractor login exception", e);
-            return Result.fail("Login failed: " + e.getMessage());
+            log.error("[Login] 登录接口发生异常", e);
+            return Result.fail("登录失败: " + e.getMessage());
         }
     }
 
     private SysUser findOrCreateUser(String openid, String unionid, String nickname, String avatarUrl, String sessionKey) {
+        log.info("[findOrCreateUser] 查询数据库, openid={}", openid);
         Optional<SysUser> existingUser = sysUserRepository.findByOpenid(openid);
+
         if (existingUser.isPresent()) {
             SysUser user = existingUser.get();
+            log.info("[findOrCreateUser] 找到已有用户, userId={}, 更新登录信息", user.getId());
             if (nickname != null && !nickname.trim().isEmpty()) {
                 user.setNickname(nickname);
             }
@@ -134,8 +169,11 @@ public class ExtractorUserController {
             }
             user.setSessionKey(sessionKey);
             user.setLastLoginAt(LocalDateTime.now());
-            return sysUserRepository.save(user);
+            SysUser saved = sysUserRepository.save(user);
+            log.info("[findOrCreateUser] 用户信息更新成功, userId={}", saved.getId());
+            return saved;
         } else {
+            log.info("[findOrCreateUser] 用户不存在，创建新用户, openid={}", openid);
             SysUser newUser = new SysUser();
             newUser.setOpenid(openid);
             newUser.setUnionid(unionid);
@@ -144,7 +182,9 @@ public class ExtractorUserController {
             newUser.setSessionKey(sessionKey);
             newUser.setStatus(1);
             newUser.setLastLoginAt(LocalDateTime.now());
-            return sysUserRepository.save(newUser);
+            SysUser saved = sysUserRepository.save(newUser);
+            log.info("[findOrCreateUser] 新用户创建成功, userId={}, openid={}", saved.getId(), saved.getOpenid());
+            return saved;
         }
     }
 
